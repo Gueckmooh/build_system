@@ -2,7 +2,7 @@ package lua
 
 import (
 	"fmt"
-	"io/ioutil"
+	"path/filepath"
 
 	"github.com/gueckmooh/bs/pkg/functional"
 	"github.com/gueckmooh/bs/pkg/project"
@@ -49,12 +49,11 @@ func ComponentsLoader(L *lua.LState) int {
 func NewComponent(L *lua.LState, name string) *lua.LTable {
 	table := L.SetFuncs(L.NewTable(), componentFunction)
 
-	fmt.Println("New component", name)
-
 	L.SetField(table, "_name_", lua.LString(name))
 	L.SetField(table, "_type_", lua.LNil)
 	L.SetField(table, "_languages_", lua.LNil)
 	L.SetField(table, "_sources_", lua.LNil)
+	L.SetField(table, "_path_", lua.LString(filepath.Dir(currentComponentFile)))
 
 	return table
 }
@@ -66,6 +65,13 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 			vname.Type().String())
 	}
 	name := vname.(lua.LString).String()
+
+	vpath := L.GetField(T, "_path_")
+	if vpath.Type() != lua.LTString {
+		return nil, fmt.Errorf("Error while getting component path, unexpected type %s",
+			vpath.Type().String())
+	}
+	path := vpath.(lua.LString).String()
 
 	vtype := L.GetField(T, "_type_")
 	if vtype.Type() != lua.LTString {
@@ -95,6 +101,7 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 		Languages: languages,
 		Sources:   sources,
 		Type:      ty,
+		Path:      path,
 	}
 
 	return proj, nil
@@ -134,21 +141,17 @@ func ReadComponentsFromLuaState(L *lua.LState) ([]*project.Component, error) {
 	return components, nil
 }
 
+var currentComponentFile = ""
+
 func (C *LuaContext) ReadComponentFile(filename string) error {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return fmt.Errorf("Error while reading file '%s':\n\t%s",
-			filename, err.Error())
-	}
-
-	fmt.Println(string(data))
-
+	currentComponentFile = filename
 	if err := C.L.DoFile(filename); err != nil {
+		currentComponentFile = ""
 		return fmt.Errorf("Error while executing file '%s':\n\t%s",
 			filename, err.Error())
 	}
+	currentComponentFile = ""
 
-	// return ReadProjectFromLuaState(C.L)
 	return nil
 }
 

@@ -12,6 +12,7 @@ type Component struct {
 	Languages []LanguageID
 	Sources   []FilesPattern
 	Type      ComponentType
+	Path      string
 }
 
 func ComponentTypeFromString(compTy string) ComponentType {

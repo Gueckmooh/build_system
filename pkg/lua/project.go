@@ -2,7 +2,6 @@ package lua
 
 import (
 	"fmt"
-	"io/ioutil"
 
 	"github.com/gueckmooh/bs/pkg/functional"
 	"github.com/gueckmooh/bs/pkg/project"
@@ -29,8 +28,6 @@ func ProjectLoader(L *lua.LState) int {
 }
 
 func ReadProjectFromLuaState(L *lua.LState) (*project.Project, error) {
-	fmt.Printf("L.GetGlobal(\"project\"): %v\n", L.GetGlobal("project"))
-
 	vproj := L.GetGlobal("project")
 	if vproj.Type() != lua.LTTable {
 		return nil, fmt.Errorf("Error while reading project, unexpected type %s",
@@ -80,14 +77,6 @@ func ReadProjectFromLuaState(L *lua.LState) (*project.Project, error) {
 }
 
 func (C *LuaContext) ReadProjectFile(filename string) (*project.Project, error) {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("Error while reading file '%s':\n\t%s",
-			filename, err.Error())
-	}
-
-	fmt.Println(string(data))
-
 	if err := C.L.DoFile(filename); err != nil {
 		return nil, fmt.Errorf("Error while executing file '%s':\n\t%s",
 			filename, err.Error())

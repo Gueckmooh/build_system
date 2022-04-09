@@ -26,8 +26,6 @@ func GetMatchingFiles(patterns []*globbing.Pattern, root string) ([]string, erro
 			return err
 		}
 
-		fmt.Printf("path = %s\n", relpath)
-
 		if !info.IsDir() && IsFileMatched(patterns, relpath) {
 			files = append(files, path)
 		}
@@ -39,4 +37,30 @@ func GetMatchingFiles(patterns []*globbing.Pattern, root string) ([]string, erro
 			root, err.Error())
 	}
 	return files, nil
+}
+
+func MkdirIfNotExist(dirname string) error {
+	_, err := os.Stat(dirname)
+	if os.IsNotExist(err) {
+		err = os.Mkdir(dirname, 0o755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func MkdirRecIfNotExist(dirname string) error {
+	_, err := os.Stat(dirname)
+	if os.IsNotExist(err) {
+		err = MkdirRecIfNotExist(filepath.Dir(dirname))
+		if err != nil {
+			return err
+		}
+		err = os.Mkdir(dirname, 0o755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

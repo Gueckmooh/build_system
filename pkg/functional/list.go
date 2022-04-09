@@ -63,3 +63,14 @@ func ListTryApply[T any](l []T, apply func(T) error) error {
 	}
 	return nil
 }
+
+// list find if
+// 'a list -> 'a -> bool -> 'a ptr
+func ListFindIf[T any](l []T, predicate func(T) bool) *T {
+	for _, v := range l {
+		if predicate(v) {
+			return &v
+		}
+	}
+	return nil
+}

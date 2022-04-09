@@ -19,6 +19,7 @@ type Project struct {
 	Languages  []LanguageID
 	Sources    []DirectoryPattern
 	Components []*Component
+	Config     *Config
 }
 
 func (p *Project) GetComponentFiles(root string) ([]string, error) {

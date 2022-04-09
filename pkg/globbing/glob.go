@@ -1,21 +1,35 @@
 package globbing
 
 import (
-	"fmt"
 	"regexp"
+
+	"github.com/gueckmooh/bs/pkg/functional"
 )
 
 type Pattern struct {
-	value    string
-	regexp   string
-	compiled *regexp.Regexp
+	value      string
+	regexp     string
+	compiled   *regexp.Regexp
+	rawPattern bool
 }
+
+type Patterns []*Pattern
 
 func NewPattern(value string) *Pattern {
 	return &Pattern{
-		value:    value,
-		regexp:   "",
-		compiled: nil,
+		value:      value,
+		regexp:     "",
+		compiled:   nil,
+		rawPattern: false,
+	}
+}
+
+func NewRawPattern(reg string) *Pattern {
+	return &Pattern{
+		value:      "",
+		regexp:     reg,
+		compiled:   nil,
+		rawPattern: true,
 	}
 }
 
@@ -78,13 +92,20 @@ func (p *Pattern) Compile() *Pattern {
 	if p.compiled != nil {
 		return p
 	}
-	fmt.Printf("globToRegexp(p.value): %v\n", globToRegexp(p.value))
-	p.regexp = globToRegexp(p.value)
-	p.compiled = regexp.MustCompile(p.regexp)
+	if p.rawPattern {
+		p.compiled = regexp.MustCompile(p.regexp)
+	} else {
+		p.regexp = globToRegexp(p.value)
+		p.compiled = regexp.MustCompile(p.regexp)
+	}
 	return p
 }
 
 func (p *Pattern) Match(s string) bool {
 	p.Compile()
 	return p.compiled.MatchString(s)
+}
+
+func (p Patterns) Match(s string) bool {
+	return functional.ListAnyOf(p, func(p *Pattern) bool { return p.Match(s) })
 }
