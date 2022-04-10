@@ -1,6 +1,7 @@
 package gcc
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -46,14 +47,14 @@ func NewGPP(opts ...GCCOption) *GCC {
 	return gcc
 }
 
-func runCommand(cmd []string) error {
+func runCommand(cmd []string) (string, string, error) {
 	fmt.Println(strings.Join(cmd, " "))
 	exe := exec.Command(cmd[0], cmd[1:]...)
+	var outb, errb bytes.Buffer
+	exe.Stdout = &outb
+	exe.Stderr = &errb
 	err := exe.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	return outb.String(), errb.String(), err
 }
 
 func (gcc *GCC) CompileFile(target, source string) error {
@@ -77,9 +78,8 @@ func (gcc *GCC) CompileFile(target, source string) error {
 
 	cmd = append(cmd, []string{"-o", target}...)
 
-	runCommand(cmd)
-
-	return nil
+	_, _, err := runCommand(cmd)
+	return err
 }
 
 func (gcc *GCC) LinkFile(target string, sources ...string) error {
@@ -106,7 +106,48 @@ func (gcc *GCC) LinkFile(target string, sources ...string) error {
 
 	cmd = append(cmd, []string{"-o", target}...)
 
-	runCommand(cmd)
+	_, _, err := runCommand(cmd)
+	return err
+}
 
-	return nil
+func (gcc *GCC) GetBuildInfoForFile(target, source string) (string, []string, error) {
+	var cmd []string
+	if gcc.gpp {
+		cmd = append(cmd, GPPExec)
+	} else {
+		cmd = append(cmd, GCCExec)
+	}
+
+	includesOpts := functional.ListMap(gcc.includes,
+		func(s string) string {
+			return "-I" + s
+		})
+
+	cmd = append(cmd, includesOpts...)
+
+	cmd = append(cmd, "-MM")
+
+	cmd = append(cmd, source)
+
+	cmd = append(cmd, []string{"-MT", target}...)
+
+	outs, _, err := runCommand(cmd)
+	if err != nil {
+		return "", nil, err
+	}
+	return ParseMOutput(outs)
+}
+
+func ParseMOutput(o string) (string, []string, error) {
+	o = strings.ReplaceAll(o, "\\\n", "")
+	os := strings.Split(o, ":")
+	if len(os) < 2 {
+		return "", nil, fmt.Errorf("Error while parsing M output")
+	}
+	target := os[0]
+	sources := strings.Split(strings.TrimSpace(os[1]), " ")
+	sources = functional.ListFilter(sources, func(s string) bool {
+		return s != ""
+	})
+	return target, sources, nil
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	adjacencylist "github.com/gueckmooh/bs/pkg/adjacency_list"
+	"github.com/gueckmooh/bs/pkg/ccpp"
 	"github.com/gueckmooh/bs/pkg/fsutil"
 	"github.com/gueckmooh/bs/pkg/functional"
 	"github.com/gueckmooh/bs/pkg/gcc"
@@ -68,12 +69,14 @@ const (
 type FileDesc struct {
 	name             string
 	needsToBeRebuilt bool
+	action           BuildAction
 }
 
-func NewFileDesc(name string) *FileDesc {
+func NewFileDesc(name string, ba BuildAction) *FileDesc {
 	return &FileDesc{
 		name:             name,
 		needsToBeRebuilt: false,
+		action:           ba,
 	}
 }
 
@@ -85,11 +88,11 @@ type SourceDependency struct {
 	component     *project.Component
 }
 
-func (sd *SourceDependency) GetOrAddFile(file string) adjacencylist.VertexDescriptor {
+func (sd *SourceDependency) GetOrAddFile(file string, ba BuildAction) adjacencylist.VertexDescriptor {
 	if v, ok := sd.filesVertices[file]; ok {
 		return v
 	} else {
-		v := sd.g.AddVertex(NewFileDesc(file))
+		v := sd.g.AddVertex(NewFileDesc(file, ba))
 		sd.filesVertices[file] = v
 		return v
 	}
@@ -104,10 +107,24 @@ func (sd *SourceDependency) ProcessFile(file string) error {
 		return err
 	}
 	obj := filepath.Join(sd.project.Config.GetObjDirectory(), sd.component.Name, base+".o")
-	objV := sd.GetOrAddFile(obj)
-	fileV := sd.GetOrAddFile(file)
+
+	compiler := gcc.NewGPP()
+	target, sources, err := compiler.GetBuildInfoForFile(obj, file)
+	if err != nil {
+		return err
+	}
+
+	objV := sd.GetOrAddFile(target, BACompile)
 	sd.g.AddEdge(sd.target, objV, buildAction(BALink))
-	sd.g.AddEdge(objV, fileV, buildAction(BACompile))
+
+	for _, f := range sources {
+		fileV := sd.GetOrAddFile(f, BANone)
+		if ccpp.IsCPPSourceFile(f) {
+			sd.g.AddEdge(objV, fileV, buildAction(BACompile))
+		} else {
+			sd.g.AddEdge(objV, fileV, buildAction(BANone))
+		}
+	}
 	return nil
 }
 
@@ -163,9 +180,10 @@ func (B *Builder) GetSourcesDependencies(proj *project.Project, component *proje
 		return nil, fmt.Errorf("Error while getting sources files of component %s\n\t%s",
 			component.Name, err.Error())
 	}
+	files = ccpp.FilterCPPSourceFiles(files)
 
 	targetName := filepath.Join(B.Project.Config.GetBinDirectory(), component.Name)
-	target := g.AddVertex(NewFileDesc(targetName))
+	target := g.AddVertex(NewFileDesc(targetName, BALink))
 	sd.target = target
 	for _, f := range files {
 		err := sd.ProcessFile(f)
@@ -203,14 +221,22 @@ func (B *Builder) Build() error {
 		if err != nil {
 			return err
 		}
-		if len(oe) == 1 && *g.GetEdgeAttribute(oe[0]) == BACompile {
-			source, err := g.Target(oe[0])
-			if err != nil {
-				return err
+
+		if len(oe) > 0 && g.GetVertexAttribute(v).action == BACompile {
+			var source adjacencylist.VertexDescriptor
+			for _, ed := range oe {
+				if *g.GetEdgeAttribute(ed) == BACompile {
+					source, err = g.Target(ed)
+					if err != nil {
+						return err
+					}
+					break
+				}
 			}
+
 			compiler := gcc.NewGPP()
 			compiler.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
-		} else if len(oe) > 0 {
+		} else if len(oe) > 0 && g.GetVertexAttribute(v).action == BALink {
 			var sources []string
 			for _, ed := range oe {
 				source, err := g.Target(ed)

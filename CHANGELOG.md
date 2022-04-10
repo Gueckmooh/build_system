@@ -8,3 +8,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Read basic configuration
 - Build basic configuration
+- Build basic configuration with several files including headers
