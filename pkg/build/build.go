@@ -16,16 +16,34 @@ import (
 	"github.com/gueckmooh/bs/pkg/project"
 )
 
+type BuildKind int8
+
+const (
+	buildExe BuildKind = iota
+	buildLib
+	buildUnknown
+)
+
 type Builder struct {
 	Project        *project.Project
 	buildUpstream  bool
 	sourcesToBuild *SourceDependency
+	buildKind      BuildKind
+}
+
+func BuildExe(b *Builder) {
+	b.buildKind = buildExe
+}
+
+func BuildLib(b *Builder) {
+	b.buildKind = buildLib
 }
 
 func NewBuilder(p *project.Project, opts ...BuildOption) *Builder {
 	builder := &Builder{
 		Project:       p,
 		buildUpstream: false,
+		buildKind:     buildUnknown,
 	}
 	for _, opt := range opts {
 		opt(builder)
@@ -88,24 +106,28 @@ type SourceDependency struct {
 	component     *project.Component
 }
 
-func (sd *SourceDependency) GetOrAddFile(file string, ba BuildAction) adjacencylist.VertexDescriptor {
-	if v, ok := sd.filesVertices[file]; ok {
-		return v
+func (sd *SourceDependency) GetOrAddFile(file string, ba BuildAction) (adjacencylist.VertexDescriptor, error) {
+	fp, err := sd.project.GetRelPathForFile(file)
+	if err != nil {
+		return 0, err
+	}
+	if v, ok := sd.filesVertices[fp]; ok {
+		return v, nil
 	} else {
-		v := sd.g.AddVertex(NewFileDesc(file, ba))
-		sd.filesVertices[file] = v
-		return v
+		v := sd.g.AddVertex(NewFileDesc(fp, ba))
+		sd.filesVertices[fp] = v
+		return v, nil
 	}
 }
 
 func (sd *SourceDependency) ProcessFile(file string) error {
 	fileWithoutSuffix := strings.TrimSuffix(file, filepath.Ext(file))
 
-	// base := filepath.Base(fileWithoutSuffix)
 	base, err := filepath.Rel(sd.component.Path, fileWithoutSuffix)
 	if err != nil {
 		return err
 	}
+
 	obj := filepath.Join(sd.project.Config.GetObjDirectory(), sd.component.Name, base+".o")
 
 	compiler := gcc.NewGPP()
@@ -114,11 +136,17 @@ func (sd *SourceDependency) ProcessFile(file string) error {
 		return err
 	}
 
-	objV := sd.GetOrAddFile(target, BACompile)
+	objV, err := sd.GetOrAddFile(target, BACompile)
+	if err != nil {
+		return err
+	}
 	sd.g.AddEdge(sd.target, objV, buildAction(BALink))
 
 	for _, f := range sources {
-		fileV := sd.GetOrAddFile(f, BANone)
+		fileV, err := sd.GetOrAddFile(f, BANone)
+		if err != nil {
+			return err
+		}
 		if ccpp.IsCPPSourceFile(f) {
 			sd.g.AddEdge(objV, fileV, buildAction(BACompile))
 		} else {
@@ -128,7 +156,7 @@ func (sd *SourceDependency) ProcessFile(file string) error {
 	return nil
 }
 
-func (sd *SourceDependency) CheckWhatNeedsToBeRebuilt() {
+func (sd *SourceDependency) CheckWhatNeedsToBeRebuilt() bool {
 	var checkNode func(adjacencylist.VertexDescriptor)
 	checkNode = func(v adjacencylist.VertexDescriptor) {
 		oe, _ := sd.g.OutEdges(v) // @todo handle error
@@ -160,6 +188,7 @@ func (sd *SourceDependency) CheckWhatNeedsToBeRebuilt() {
 		}
 	}
 	checkNode(sd.target)
+	return sd.g.GetVertexAttribute(sd.target).needsToBeRebuilt
 }
 
 func (B *Builder) GetSourcesDependencies(proj *project.Project, component *project.Component) (*SourceDependency, error) {
@@ -183,6 +212,10 @@ func (B *Builder) GetSourcesDependencies(proj *project.Project, component *proje
 	files = ccpp.FilterCPPSourceFiles(files)
 
 	targetName := filepath.Join(B.Project.Config.GetBinDirectory(), component.Name)
+	targetName, err = sd.project.GetRelPathForFile(targetName)
+	if err != nil {
+		return nil, err
+	}
 	target := g.AddVertex(NewFileDesc(targetName, BALink))
 	sd.target = target
 	for _, f := range files {
@@ -214,7 +247,6 @@ func (B *Builder) Build() error {
 		if g.IsLeef(v) || !g.GetVertexAttribute(v).needsToBeRebuilt {
 			return nil
 		}
-		fmt.Printf("Building node %s...\n", g.GetVertexAttribute(v).name)
 
 		dir := filepath.Dir(g.GetVertexAttribute(v).name)
 		err = fsutil.MkdirRecIfNotExist(dir)
@@ -264,6 +296,8 @@ func (B *Builder) BuildComponent(componentName string) error {
 		return fmt.Errorf("Could not find component %s", componentName)
 	}
 
+	fmt.Printf("Building component '%s'...\n", componentName)
+
 	if err := B.prepareBuildArea(); err != nil {
 		return fmt.Errorf("Fail to prepare build area:\n\t%s", err.Error())
 	}
@@ -273,13 +307,8 @@ func (B *Builder) BuildComponent(componentName string) error {
 		return err
 	}
 
-	srcDeps.CheckWhatNeedsToBeRebuilt()
+	somethingToDo := srcDeps.CheckWhatNeedsToBeRebuilt()
 	B.sourcesToBuild = srcDeps
-
-	err = B.Build()
-	if err != nil {
-		return err
-	}
 
 	vertexWritterOption := adjacencylist.WithVertexLabelWritter[FileDesc, BuildAction](func(s *FileDesc) string {
 		color := "black"
@@ -289,6 +318,16 @@ func (B *Builder) BuildComponent(componentName string) error {
 		return fmt.Sprintf(`[label="%s",color="%s"]`, s.name, color)
 	})
 	ioutil.WriteFile("/tmp/graphviz.dot", []byte(srcDeps.g.DumpGraphviz(vertexWritterOption)), 0o600)
+
+	if !somethingToDo {
+		fmt.Printf("Nothing to be done for '%s'\n", componentName)
+		return nil
+	}
+
+	err = B.Build()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

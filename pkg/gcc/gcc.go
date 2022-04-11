@@ -48,7 +48,6 @@ func NewGPP(opts ...GCCOption) *GCC {
 }
 
 func runCommand(cmd []string) (string, string, error) {
-	fmt.Println(strings.Join(cmd, " "))
 	exe := exec.Command(cmd[0], cmd[1:]...)
 	var outb, errb bytes.Buffer
 	exe.Stdout = &outb
@@ -78,6 +77,7 @@ func (gcc *GCC) CompileFile(target, source string) error {
 
 	cmd = append(cmd, []string{"-o", target}...)
 
+	fmt.Printf("Compiling %s\n", source)
 	_, _, err := runCommand(cmd)
 	return err
 }
@@ -106,6 +106,7 @@ func (gcc *GCC) LinkFile(target string, sources ...string) error {
 
 	cmd = append(cmd, []string{"-o", target}...)
 
+	fmt.Printf("Linking %s\n", target)
 	_, _, err := runCommand(cmd)
 	return err
 }
