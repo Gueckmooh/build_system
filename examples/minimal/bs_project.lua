@@ -8,3 +8,5 @@ project:Version "0.0.1"
 project:Languages     "CPP"     -- Enables C++ compilation
 
 project:AddSources "sources/"
+
+project:DefaultTarget "hello_exe"

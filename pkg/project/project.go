@@ -14,12 +14,13 @@ const (
 )
 
 type Project struct {
-	Name       string
-	Version    string
-	Languages  []LanguageID
-	Sources    []DirectoryPattern
-	Components []*Component
-	Config     *Config
+	Name          string
+	Version       string
+	Languages     []LanguageID
+	Sources       []DirectoryPattern
+	Components    []*Component
+	Config        *Config
+	DefaultTarget string
 }
 
 func (p *Project) GetComponentFiles(root string) ([]string, error) {

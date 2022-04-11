@@ -2,13 +2,13 @@
 set -x
 set -e
 
-EX=examples/minimal_lib
+EX=examples/minimal
 
 make
 
-rm -r "$EX/.build"
+rm -rf "$EX/.build"
 
-(cd $EX && echo -e "----------\n\n\n" && ../../bin/bs && echo -e "\n\n\n----------")
+(cd $EX && echo -e "----------\n\n\n" && ../../bin/bs build && echo -e "\n\n\n----------")
 
 dot -Tpng -o /tmp/graphviz.png /tmp/graphviz.dot
 feh /tmp/graphviz.png

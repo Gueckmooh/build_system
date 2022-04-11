@@ -25,25 +25,27 @@ const (
 )
 
 type Builder struct {
-	Project        *project.Project
-	buildUpstream  bool
-	sourcesToBuild *SourceDependency
-	buildKind      BuildKind
+	Project          *project.Project
+	buildUpstream    bool
+	sourcesToBuild   *SourceDependency
+	buildKind        BuildKind
+	componentToBuild string
 }
 
 func BuildExe(b *Builder) {
 	b.buildKind = buildExe
 }
 
-func BuildLib(b *Builder) {
-	b.buildKind = buildLib
-}
+// func BuildLib(b *Builder) {
+// 	b.buildKind = buildLib
+// }
 
-func NewBuilder(p *project.Project, opts ...BuildOption) *Builder {
+func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) *Builder {
 	builder := &Builder{
-		Project:       p,
-		buildUpstream: false,
-		buildKind:     buildUnknown,
+		Project:          p,
+		buildUpstream:    false,
+		buildKind:        buildUnknown,
+		componentToBuild: ctb,
 	}
 	for _, opt := range opts {
 		opt(builder)
@@ -297,21 +299,26 @@ func (B *Builder) Build() error {
 	return err
 }
 
-func (B *Builder) BuildComponent(componentName string) error {
+func (B *Builder) BuildComponent() error {
 	var component *project.Component
 	if mc := functional.ListFindIf(B.Project.Components, func(c *project.Component) bool {
-		return c.Name == componentName
+		return c.Name == B.componentToBuild
 	}); mc != nil {
 		component = *mc
 	} else {
-		return fmt.Errorf("Could not find component %s", componentName)
+		return fmt.Errorf("Could not find component %s", B.componentToBuild)
 	}
 
-	if component.Type == project.TypeUnknown {
-		return fmt.Errorf("Unable to build component with unknown type %s", componentName)
+	switch component.Type {
+	case project.TypeExecutable:
+		B.buildKind = buildExe
+	case project.TypeLibrary:
+		B.buildKind = buildLib
+	case project.TypeUnknown:
+		return fmt.Errorf("Unable to build component with unknown type %s", B.componentToBuild)
 	}
 
-	fmt.Printf("Building component '%s'...\n", componentName)
+	fmt.Printf("Building component '%s'...\n", B.componentToBuild)
 
 	if err := B.prepareBuildArea(); err != nil {
 		return fmt.Errorf("Fail to prepare build area:\n\t%s", err.Error())
@@ -335,7 +342,7 @@ func (B *Builder) BuildComponent(componentName string) error {
 	ioutil.WriteFile("/tmp/graphviz.dot", []byte(srcDeps.g.DumpGraphviz(vertexWritterOption)), 0o600)
 
 	if !somethingToDo {
-		fmt.Printf("Nothing to be done for '%s'\n", componentName)
+		fmt.Printf("Nothing to be done for '%s'\n", B.componentToBuild)
 		return nil
 	}
 

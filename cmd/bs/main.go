@@ -4,28 +4,34 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gueckmooh/bs/pkg/build"
-	projectutils "github.com/gueckmooh/bs/pkg/project_utils"
+	"github.com/gueckmooh/argparse"
 )
 
+type Options struct {
+	parser *argparse.Parser
+
+	buildOptions BuildOptions
+}
+
+func (opts *Options) init() {
+	opts.parser = argparse.NewParser("bs", "Manages the build system")
+	opts.buildOptions.init(opts.parser)
+}
+
 func tryMain() error {
-	cwd, err := os.Getwd()
+	var opts Options
+	opts.init()
+
+	err := opts.parser.Parse(os.Args)
 	if err != nil {
-		return err
+		return fmt.Errorf("Fails to parse options:\n  %s\n", err.Error())
 	}
 
-	proj, err := projectutils.GetProject(cwd)
-	if err != nil {
-		return err
+	if opts.buildOptions.happened() {
+		return buildMain(opts)
 	}
 
-	builder := build.NewBuilder(proj, build.BuildLib)
-	err = builder.BuildComponent("hello_lib")
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return fmt.Errorf("No command given")
 }
 
 func String(s string) *string {
@@ -35,5 +41,6 @@ func String(s string) *string {
 func main() {
 	if err := tryMain(); err != nil {
 		fmt.Printf("Fatal error:\n%s\n", err.Error())
+		os.Exit(1)
 	}
 }
