@@ -31,9 +31,10 @@ var (
 		"NewComponent": luaNewComponent,
 	}
 	componentFunction = map[string]lua.LGFunction{
-		"Type":       newSetter("_type_"),
-		"Languages":  newTableSetter("_languages_"),
-		"AddSources": newTablePusher("_sources_"),
+		"Type":            newSetter("_type_"),
+		"Languages":       newTableSetter("_languages_"),
+		"AddSources":      newTablePusher("_sources_"),
+		"ExportedHeaders": newTableSetter("_exported_headers_"),
 	}
 )
 
@@ -54,6 +55,7 @@ func NewComponent(L *lua.LState, name string) *lua.LTable {
 	L.SetField(table, "_languages_", lua.LNil)
 	L.SetField(table, "_sources_", lua.LNil)
 	L.SetField(table, "_path_", lua.LString(filepath.Dir(currentComponentFile)))
+	L.SetField(table, "_exported_headers_", lua.LNil)
 
 	return table
 }
@@ -96,12 +98,23 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 	sources := functional.ListMap(luaSTableToSTable(vsources.(*lua.LTable)),
 		func(s string) project.FilesPattern { return project.FilesPattern(s) })
 
+	vexported_headers := L.GetField(T, "_exported_headers_")
+	if vexported_headers.Type() != lua.LTTable && vexported_headers.Type() != lua.LTNil {
+		return nil, fmt.Errorf("Error while getting component exported headers, unexpected type %s",
+			vexported_headers.Type().String())
+	}
+	var exported_headers map[string]string = nil
+	if vexported_headers.Type() == lua.LTTable {
+		exported_headers = luaSTableToSMap(vexported_headers.(*lua.LTable))
+	}
+
 	proj := &project.Component{
-		Name:      name,
-		Languages: languages,
-		Sources:   sources,
-		Type:      ty,
-		Path:      path,
+		Name:            name,
+		Languages:       languages,
+		Sources:         sources,
+		Type:            ty,
+		Path:            path,
+		ExportedHeaders: exported_headers,
 	}
 
 	return proj, nil

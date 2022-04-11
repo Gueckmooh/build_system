@@ -53,3 +53,14 @@ func luaSTableToSTable(T *lua.LTable) []string {
 	})
 	return list
 }
+
+func luaSTableToSMap(T *lua.LTable) map[string]string {
+	var list map[string]string = make(map[string]string)
+	T.ForEach(func(k, v lua.LValue) {
+		if v.Type() == lua.LTString && k.Type() == lua.LTString {
+			// list = append(list, v.String())
+			list[k.String()] = v.String()
+		}
+	})
+	return list
+}

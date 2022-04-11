@@ -2,6 +2,7 @@ package globbing
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/gueckmooh/bs/pkg/functional"
 )
@@ -33,10 +34,9 @@ func NewRawPattern(reg string) *Pattern {
 	}
 }
 
-func globToRegexp(glob string) string {
-	lastIsStar := false
+func buildRegexpFromGlob(glob string) string {
 	var re string
-	re += `^`
+	lastIsStar := false
 	for _, rune := range glob {
 		// Special case for * and **
 		if rune == '*' {
@@ -81,10 +81,23 @@ func globToRegexp(glob string) string {
 	if lastIsStar {
 		re += `[^/]*`
 		lastIsStar = false
-	} else if glob[len(glob)-1] == '/' {
-		re += `.*`
 	}
+	return re
+}
+
+func globToRegexp(glob string) string {
+	var re string
+	re += `^`
+	re += buildRegexpFromGlob(glob)
 	re += `$`
+	return re
+}
+
+func simplifiedGlobToRegexp(glob string) string {
+	re := globToRegexp(glob)
+	if re[len(re)-2] == '/' {
+		re = strings.TrimSuffix(re, "$") + ".*$"
+	}
 	return re
 }
 
@@ -95,7 +108,7 @@ func (p *Pattern) Compile() *Pattern {
 	if p.rawPattern {
 		p.compiled = regexp.MustCompile(p.regexp)
 	} else {
-		p.regexp = globToRegexp(p.value)
+		p.regexp = simplifiedGlobToRegexp(p.value)
 		p.compiled = regexp.MustCompile(p.regexp)
 	}
 	return p

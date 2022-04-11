@@ -1,6 +1,7 @@
 #include "hello.hpp"
 #include <iostream>
+#include "hello/greetings.hpp"
 
-void print_hello() {
+void greetings() {
     std::cout << hello() << std::endl;
 }

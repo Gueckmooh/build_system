@@ -3,6 +3,7 @@ package gcc
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -44,6 +45,12 @@ type GCCOption func(*GCC)
 
 func TargetLib(g *GCC) {
 	g.targetKind = targetLib
+}
+
+func WithInclude(include string) GCCOption {
+	return func(g *GCC) {
+		g.includes = append(g.includes, include)
+	}
 }
 
 func NewGPP(opts ...GCCOption) *GCC {
@@ -95,8 +102,12 @@ func (gcc *GCC) CompileFile(target, source string) error {
 	cmd = append(cmd, []string{"-o", target}...)
 
 	fmt.Printf("Compiling %s\n", source)
-	_, _, err := runCommand(cmd)
-	return err
+	_, errs, err := runCommand(cmd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", errs)
+		return fmt.Errorf("Error while compiling file %s\n\t%s", source, err.Error())
+	}
+	return nil
 }
 
 func (gcc *GCC) LinkFile(target string, sources ...string) error {
@@ -153,9 +164,10 @@ func (gcc *GCC) GetBuildInfoForFile(target, source string) (string, []string, er
 
 	cmd = append(cmd, []string{"-MT", target}...)
 
-	outs, _, err := runCommand(cmd)
+	outs, errs, err := runCommand(cmd)
 	if err != nil {
-		return "", nil, err
+		fmt.Fprintf(os.Stderr, "%s", errs)
+		return "", nil, fmt.Errorf("Error while compiling file %s\n\t%s", source, err.Error())
 	}
 	return ParseMOutput(outs)
 }

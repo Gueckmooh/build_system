@@ -11,11 +11,12 @@ const (
 )
 
 type Component struct {
-	Name      string
-	Languages []LanguageID
-	Sources   []FilesPattern
-	Type      ComponentType
-	Path      string
+	Name            string
+	Languages       []LanguageID
+	Sources         []FilesPattern
+	Type            ComponentType
+	Path            string
+	ExportedHeaders map[string]string
 }
 
 func ComponentTypeFromString(compTy string) ComponentType {

@@ -30,6 +30,7 @@ type Builder struct {
 	sourcesToBuild   *SourceDependency
 	buildKind        BuildKind
 	componentToBuild string
+	component        *project.Component
 }
 
 func BuildExe(b *Builder) {
@@ -122,6 +123,16 @@ func (sd *SourceDependency) GetOrAddFile(file string, ba BuildAction) (adjacency
 	}
 }
 
+func (sd *SourceDependency) getIncludesOptionsForComponent() []gcc.GCCOption {
+	var opts []gcc.GCCOption
+	includeBase := sd.project.Config.GetExportedHeadersDirectory()
+	if sd.component.Type == project.TypeLibrary {
+		opts = append(opts, gcc.WithInclude(filepath.Join(includeBase, sd.component.Name)))
+	}
+
+	return opts
+}
+
 func (sd *SourceDependency) ProcessFile(file string) error {
 	fileWithoutSuffix := strings.TrimSuffix(file, filepath.Ext(file))
 
@@ -132,7 +143,7 @@ func (sd *SourceDependency) ProcessFile(file string) error {
 
 	obj := filepath.Join(sd.project.Config.GetObjDirectory(), sd.component.Name, base+".o")
 
-	compiler := gcc.NewGPP()
+	compiler := gcc.NewGPP(sd.getIncludesOptionsForComponent()...)
 	target, sources, err := compiler.GetBuildInfoForFile(obj, file)
 	if err != nil {
 		return err
@@ -240,12 +251,12 @@ func (B *Builder) GetSourcesDependencies(proj *project.Project, component *proje
 func (B *Builder) Build() error {
 	g := B.sourcesToBuild.g
 	var compiler *gcc.GCC
+	compilerOptions := B.sourcesToBuild.getIncludesOptionsForComponent()
 	switch B.buildKind {
-	case buildExe:
-		compiler = gcc.NewGPP()
 	case buildLib:
-		compiler = gcc.NewGPP(gcc.TargetLib)
+		compilerOptions = append(compilerOptions, gcc.TargetLib)
 	}
+	compiler = gcc.NewGPP(compilerOptions...)
 	var buildNode func(adjacencylist.VertexDescriptor) error
 	buildNode = func(v adjacencylist.VertexDescriptor) error {
 		oe, err := g.OutEdges(v)
@@ -308,6 +319,7 @@ func (B *Builder) BuildComponent() error {
 	} else {
 		return fmt.Errorf("Could not find component %s", B.componentToBuild)
 	}
+	B.component = component
 
 	switch component.Type {
 	case project.TypeExecutable:
@@ -318,7 +330,12 @@ func (B *Builder) BuildComponent() error {
 		return fmt.Errorf("Unable to build component with unknown type %s", B.componentToBuild)
 	}
 
-	fmt.Printf("Building component '%s'...\n", B.componentToBuild)
+	fmt.Printf("--------------- Building component '%s'...\n", B.componentToBuild)
+
+	err := B.exportHeaders()
+	if err != nil {
+		return err
+	}
 
 	if err := B.prepareBuildArea(); err != nil {
 		return fmt.Errorf("Fail to prepare build area:\n\t%s", err.Error())
@@ -351,5 +368,6 @@ func (B *Builder) BuildComponent() error {
 		return err
 	}
 
+	fmt.Printf("--------------- Build successful\n")
 	return nil
 }

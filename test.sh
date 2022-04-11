@@ -1,14 +1,16 @@
 #!/bin/bash
-set -x
+# set -x
 set -e
 
-EX=examples/minimal
+EX=examples/minimal_lib
 
 make
 
 rm -rf "$EX/.build"
 
-(cd $EX && echo -e "----------\n\n\n" && ../../bin/bs build && echo -e "\n\n\n----------")
+pushd "$EX" >/dev/null
+../../bin/bs build
+popd >/dev/null
 
-dot -Tpng -o /tmp/graphviz.png /tmp/graphviz.dot
-feh /tmp/graphviz.png
+# dot -Tpng -o /tmp/graphviz.png /tmp/graphviz.dot
+# feh /tmp/graphviz.png
