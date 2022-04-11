@@ -24,21 +24,34 @@ const (
 	GCCExec = "gcc"
 )
 
+type TargetKind int8
+
+const (
+	targetExe TargetKind = iota
+	targetLib
+)
+
 type GCC struct {
 	gpp        bool
 	debugLevel DebugLevel
 	includes   []string
 	libDirs    []string
 	libs       []string
+	targetKind TargetKind
 }
 
 type GCCOption func(*GCC)
+
+func TargetLib(g *GCC) {
+	g.targetKind = targetLib
+}
 
 func NewGPP(opts ...GCCOption) *GCC {
 	gcc := &GCC{
 		gpp:        true,
 		debugLevel: DebugLevelO0,
 		includes:   []string{},
+		targetKind: targetExe,
 	}
 	for _, opt := range opts {
 		opt(gcc)
@@ -69,6 +82,10 @@ func (gcc *GCC) CompileFile(target, source string) error {
 			return "-I" + s
 		})
 
+	if gcc.targetKind == targetLib {
+		cmd = append(cmd, "-fPIC")
+	}
+
 	cmd = append(cmd, includesOpts...)
 
 	cmd = append(cmd, "-c")
@@ -88,6 +105,10 @@ func (gcc *GCC) LinkFile(target string, sources ...string) error {
 		cmd = append(cmd, GPPExec)
 	} else {
 		cmd = append(cmd, GCCExec)
+	}
+
+	if gcc.targetKind == targetLib {
+		cmd = append(cmd, "-shared")
 	}
 
 	libDirOpts := functional.ListMap(gcc.libDirs,

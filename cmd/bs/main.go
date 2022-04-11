@@ -19,8 +19,8 @@ func tryMain() error {
 		return err
 	}
 
-	builder := build.NewBuilder(proj, build.BuildExe)
-	err = builder.BuildComponent("hello_exe")
+	builder := build.NewBuilder(proj, build.BuildLib)
+	err = builder.BuildComponent("hello_lib")
 	if err != nil {
 		return err
 	}

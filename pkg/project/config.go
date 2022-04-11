@@ -13,7 +13,7 @@ type Config struct {
 const (
 	DefaultBuildRootDirectory = ".build"
 	DefaultBinDirectory       = "bin"
-	DefaultLibDirectory       = "lin"
+	DefaultLibDirectory       = "lib"
 	DefaultObjDirectory       = "obj"
 )
 
@@ -29,6 +29,10 @@ func GetDefaultConfig(root string) *Config {
 
 func (c *Config) GetBinDirectory() string {
 	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.BinDirectory)
+}
+
+func (c *Config) GetLibDirectory() string {
+	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.LibDirectory)
 }
 
 func (c *Config) GetObjDirectory() string {

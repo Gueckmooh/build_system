@@ -211,7 +211,14 @@ func (B *Builder) GetSourcesDependencies(proj *project.Project, component *proje
 	}
 	files = ccpp.FilterCPPSourceFiles(files)
 
-	targetName := filepath.Join(B.Project.Config.GetBinDirectory(), component.Name)
+	var buildDir string
+	switch component.Type {
+	case project.TypeExecutable:
+		buildDir = B.Project.Config.GetBinDirectory()
+	case project.TypeLibrary:
+		buildDir = B.Project.Config.GetLibDirectory()
+	}
+	targetName := filepath.Join(buildDir, component.GetTargetName())
 	targetName, err = sd.project.GetRelPathForFile(targetName)
 	if err != nil {
 		return nil, err
@@ -230,6 +237,13 @@ func (B *Builder) GetSourcesDependencies(proj *project.Project, component *proje
 
 func (B *Builder) Build() error {
 	g := B.sourcesToBuild.g
+	var compiler *gcc.GCC
+	switch B.buildKind {
+	case buildExe:
+		compiler = gcc.NewGPP()
+	case buildLib:
+		compiler = gcc.NewGPP(gcc.TargetLib)
+	}
 	var buildNode func(adjacencylist.VertexDescriptor) error
 	buildNode = func(v adjacencylist.VertexDescriptor) error {
 		oe, err := g.OutEdges(v)
@@ -265,8 +279,6 @@ func (B *Builder) Build() error {
 					break
 				}
 			}
-
-			compiler := gcc.NewGPP()
 			compiler.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
 		} else if len(oe) > 0 && g.GetVertexAttribute(v).action == BALink {
 			var sources []string
@@ -277,7 +289,6 @@ func (B *Builder) Build() error {
 				}
 				sources = append(sources, g.GetVertexAttribute(source).name)
 			}
-			compiler := gcc.NewGPP()
 			compiler.LinkFile(g.GetVertexAttribute(v).name, sources...)
 		}
 		return nil
@@ -294,6 +305,10 @@ func (B *Builder) BuildComponent(componentName string) error {
 		component = *mc
 	} else {
 		return fmt.Errorf("Could not find component %s", componentName)
+	}
+
+	if component.Type == project.TypeUnknown {
+		return fmt.Errorf("Unable to build component with unknown type %s", componentName)
 	}
 
 	fmt.Printf("Building component '%s'...\n", componentName)
