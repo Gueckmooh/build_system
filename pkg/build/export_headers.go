@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"text/template"
 
@@ -65,27 +66,74 @@ func makeTrampolineContent(from, to string) (string, error) {
 	return buf.String(), nil
 }
 
-func (B *Builder) doCopyFiles(copies map[string]string) error {
+func (B *Builder) getFilesToCopyOrRemove(copies map[string]string) (map[string]string, []string, error) {
+	toCopy := make(map[string]string)
+	toKeep := make(map[string]bool)
+	var toRemove []string
+	for f, t := range copies {
+		from, to, err := B.getExportedHeaderPaths(f, t)
+		if err != nil {
+			return nil, nil, err
+		}
+		toKeep[to] = true
+		_, err = os.Stat(to)
+		if os.IsNotExist(err) {
+			toCopy[from] = to
+		}
+	}
+
+	if _, err := os.Stat(B.getComponentHeaderExportsDir()); !os.IsNotExist(err) {
+		baseToPath, err := filepath.Rel(B.Project.Config.ProjectRootDirectory, B.getComponentHeaderExportsDir())
+		if err != nil {
+			return nil, nil, err
+		}
+		err = filepath.Walk(baseToPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if info.IsDir() {
+				return nil
+			}
+
+			if _, keep := toKeep[path]; !keep {
+				toRemove = append(toRemove, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return toCopy, toRemove, nil
+}
+
+func (B *Builder) getExportedHeaderPaths(from, to string) (string, string, error) {
 	baseFromPath, err := filepath.Rel(B.Project.Config.ProjectRootDirectory, B.component.Path)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 	baseToPath, err := filepath.Rel(B.Project.Config.ProjectRootDirectory, B.getComponentHeaderExportsDir())
 	if err != nil {
-		return err
+		return "", "", err
 	}
+	realFrom := filepath.Join(baseFromPath, from)
+	realTo := filepath.Join(baseToPath, to)
+	return realFrom, realTo, nil
+}
+
+func (B *Builder) doCopyFiles(copies map[string]string) error {
 	for from, to := range copies {
-		realFrom := filepath.Join(baseFromPath, from)
-		realTo := filepath.Join(baseToPath, to)
-		err = fsutil.MkdirRecIfNotExist(filepath.Dir(realTo))
+		err := fsutil.MkdirRecIfNotExist(filepath.Dir(to))
 		if err != nil {
 			return err
 		}
-		tramp, err := makeTrampolineContent(realFrom, realTo)
+		tramp, err := makeTrampolineContent(from, to)
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(realTo, []byte(tramp), 0o600)
+		fmt.Printf("Writing %s\n", to)
+		err = ioutil.WriteFile(to, []byte(tramp), 0o600)
 		if err != nil {
 			return err
 		}
@@ -93,29 +141,59 @@ func (B *Builder) doCopyFiles(copies map[string]string) error {
 	return nil
 }
 
-func (B *Builder) exportHeaders() error {
-	if B.component.ExportedHeaders == nil {
-		return nil
-	}
-	fmt.Printf("Exporting headers for component '%s'...\n", B.component.Name)
-	for k, v := range B.component.ExportedHeaders {
-		p := globbing.NewPatternReplace(k, v)
-		err := p.Compile()
-		if err != nil {
-			return err
-		}
-		files, err := fsutil.GetMatchingRepFiles(p, B.component.Path)
-		if err != nil {
-			return err
-		}
-		copies, err := B.getCopiesForExportHeaders(p, B.component.Path, files)
-		if err != nil {
-			return err
-		}
-		err = B.doCopyFiles(copies)
+func (B *Builder) doRemoveFiles(removes []string) error {
+	for _, file := range removes {
+		fmt.Printf("Removing %s\n", file)
+		err := os.Remove(file)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (B *Builder) exportHeaders() (bool, error) {
+	if B.component.ExportedHeaders == nil {
+		return false, nil
+	}
+	allCopies := make(map[string]string)
+	for k, v := range B.component.ExportedHeaders {
+		p := globbing.NewPatternReplace(k, v)
+		err := p.Compile()
+		if err != nil {
+			return false, err
+		}
+		files, err := fsutil.GetMatchingRepFiles(p, B.component.Path)
+		if err != nil {
+			return false, err
+		}
+		copies, err := B.getCopiesForExportHeaders(p, B.component.Path, files)
+		if err != nil {
+			return false, err
+		}
+		for k, v := range copies {
+			allCopies[k] = v
+		}
+	}
+	copies, removes, err := B.getFilesToCopyOrRemove(allCopies)
+	if err != nil {
+		return false, err
+	}
+	if len(copies) > 0 || len(removes) > 0 {
+		fmt.Printf("Exporting headers for component '%s'...\n", B.component.Name)
+		if len(copies) > 0 {
+			err := B.doCopyFiles(copies)
+			if err != nil {
+				return true, err
+			}
+		}
+		if len(removes) > 0 {
+			err := B.doRemoveFiles(removes)
+			if err != nil {
+				return true, err
+			}
+		}
+		return true, nil
+	}
+	return false, nil
 }

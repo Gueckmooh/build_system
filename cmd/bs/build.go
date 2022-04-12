@@ -59,7 +59,7 @@ func tryBuildMain(opts Options) error {
 func buildMain(opts Options) error {
 	err := tryBuildMain(opts)
 	if err != nil {
-		return fmt.Errorf("Error while building component:\n  %s", err.Error())
+		return fmt.Errorf("Error while building components:\n  %s", err.Error())
 	}
 
 	return nil

@@ -11,11 +11,13 @@ type Options struct {
 	parser *argparse.Parser
 
 	buildOptions BuildOptions
+	cleanOptions CleanOptions
 }
 
 func (opts *Options) init() {
 	opts.parser = argparse.NewParser("bs", "Manages the build system")
 	opts.buildOptions.init(opts.parser)
+	opts.cleanOptions.init(opts.parser)
 }
 
 func tryMain() error {
@@ -29,6 +31,8 @@ func tryMain() error {
 
 	if opts.buildOptions.happened() {
 		return buildMain(opts)
+	} else if opts.cleanOptions.happened() {
+		return cleanMain(opts)
 	}
 
 	return fmt.Errorf("No command given")

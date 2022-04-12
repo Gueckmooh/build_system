@@ -34,6 +34,10 @@ func (c *Config) GetBinDirectory() string {
 	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.BinDirectory)
 }
 
+func (c *Config) GetBuildDirectory() string {
+	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory)
+}
+
 func (c *Config) GetLibDirectory() string {
 	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.LibDirectory)
 }

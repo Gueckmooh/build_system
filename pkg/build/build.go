@@ -292,7 +292,10 @@ func (B *Builder) Build() error {
 					break
 				}
 			}
-			compiler.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
+			err := compiler.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
+			if err != nil {
+				return err
+			}
 		} else if len(oe) > 0 && g.GetVertexAttribute(v).action == BALink {
 			var sources []string
 			for _, ed := range oe {
@@ -308,6 +311,43 @@ func (B *Builder) Build() error {
 	}
 	err := buildNode(B.sourcesToBuild.target)
 	return err
+}
+
+func (B *Builder) tryBuildComponent(component *project.Component) (bool, error) {
+	headersHasBeenExported, err := B.exportHeaders()
+	if err != nil {
+		return false, err
+	}
+
+	if err := B.prepareBuildArea(); err != nil {
+		return false, fmt.Errorf("Fail to prepare build area:\n\t%s", err.Error())
+	}
+
+	srcDeps, err := B.GetSourcesDependencies(B.Project, component)
+	if err != nil {
+		return false, err
+	}
+
+	needBuild := srcDeps.CheckWhatNeedsToBeRebuilt()
+	B.sourcesToBuild = srcDeps
+
+	vertexWritterOption := adjacencylist.WithVertexLabelWritter[FileDesc, BuildAction](func(s *FileDesc) string {
+		color := "black"
+		if s.needsToBeRebuilt {
+			color = "red"
+		}
+		return fmt.Sprintf(`[label="%s",color="%s"]`, s.name, color)
+	})
+	ioutil.WriteFile("/tmp/graphviz.dot", []byte(srcDeps.g.DumpGraphviz(vertexWritterOption)), 0o600)
+
+	if needBuild {
+		err = B.Build()
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return needBuild || headersHasBeenExported, nil
 }
 
 func (B *Builder) BuildComponent() error {
@@ -329,45 +369,17 @@ func (B *Builder) BuildComponent() error {
 	case project.TypeUnknown:
 		return fmt.Errorf("Unable to build component with unknown type %s", B.componentToBuild)
 	}
-
 	fmt.Printf("--------------- Building component '%s'...\n", B.componentToBuild)
-
-	err := B.exportHeaders()
+	done, err := B.tryBuildComponent(component)
 	if err != nil {
-		return err
+		fmt.Fprintf(os.Stderr, "Error while building componnent '%s':\n\t%s\n", B.componentToBuild, err.Error())
+		fmt.Printf("--------------- Failed to build component '%s'\n", B.componentToBuild)
+		return fmt.Errorf("Build of component '%s' failed", B.componentToBuild)
 	}
-
-	if err := B.prepareBuildArea(); err != nil {
-		return fmt.Errorf("Fail to prepare build area:\n\t%s", err.Error())
+	if done {
+		fmt.Printf("--------------- Build successful\n")
+	} else {
+		fmt.Printf("--------------- Nothing to be done for '%s'\n", B.componentToBuild)
 	}
-
-	srcDeps, err := B.GetSourcesDependencies(B.Project, component)
-	if err != nil {
-		return err
-	}
-
-	somethingToDo := srcDeps.CheckWhatNeedsToBeRebuilt()
-	B.sourcesToBuild = srcDeps
-
-	vertexWritterOption := adjacencylist.WithVertexLabelWritter[FileDesc, BuildAction](func(s *FileDesc) string {
-		color := "black"
-		if s.needsToBeRebuilt {
-			color = "red"
-		}
-		return fmt.Sprintf(`[label="%s",color="%s"]`, s.name, color)
-	})
-	ioutil.WriteFile("/tmp/graphviz.dot", []byte(srcDeps.g.DumpGraphviz(vertexWritterOption)), 0o600)
-
-	if !somethingToDo {
-		fmt.Printf("Nothing to be done for '%s'\n", B.componentToBuild)
-		return nil
-	}
-
-	err = B.Build()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("--------------- Build successful\n")
 	return nil
 }
