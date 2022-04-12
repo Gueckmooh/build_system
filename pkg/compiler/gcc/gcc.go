@@ -122,7 +122,7 @@ func (gcc *GCC) CompileFile(target, source string) error {
 	return nil
 }
 
-func (gcc *GCC) LinkFile(target string, sources ...string) error {
+func (gcc *GCC) LinkFiles(target string, sources ...string) error {
 	var cmd []string
 	if gcc.gpp {
 		cmd = append(cmd, GPPExec)
@@ -159,7 +159,7 @@ func (gcc *GCC) LinkFile(target string, sources ...string) error {
 	return nil
 }
 
-func (gcc *GCC) GetBuildInfoForFile(target, source string) (string, []string, error) {
+func (gcc *GCC) GetFileDependencies(target, source string) (string, []string, error) {
 	var cmd []string
 	if gcc.gpp {
 		cmd = append(cmd, GPPExec)

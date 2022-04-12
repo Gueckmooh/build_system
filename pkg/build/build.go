@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	adjacencylist "github.com/gueckmooh/bs/pkg/adjacency_list"
+	alist "github.com/gueckmooh/bs/pkg/adjacency_list"
 	"github.com/gueckmooh/bs/pkg/ccpp"
+	"github.com/gueckmooh/bs/pkg/compiler"
 	"github.com/gueckmooh/bs/pkg/fsutil"
 	"github.com/gueckmooh/bs/pkg/functional"
-	"github.com/gueckmooh/bs/pkg/gcc"
 	"github.com/gueckmooh/bs/pkg/globbing"
 	"github.com/gueckmooh/bs/pkg/project"
 )
@@ -101,14 +101,14 @@ func NewFileDesc(name string, ba BuildAction) *FileDesc {
 }
 
 type SourceDependency struct {
-	g             *adjacencylist.Graph[FileDesc, BuildAction]
-	target        adjacencylist.VertexDescriptor
-	filesVertices map[string]adjacencylist.VertexDescriptor
+	g             *alist.Graph[FileDesc, BuildAction]
+	target        alist.VertexDescriptor
+	filesVertices map[string]alist.VertexDescriptor
 	project       *project.Project
 	component     *project.Component
 }
 
-func (sd *SourceDependency) GetOrAddFile(file string, ba BuildAction) (adjacencylist.VertexDescriptor, error) {
+func (sd *SourceDependency) GetOrAddFile(file string, ba BuildAction) (alist.VertexDescriptor, error) {
 	fp, err := sd.project.GetRelPathForFile(file)
 	if err != nil {
 		return 0, err
@@ -122,35 +122,50 @@ func (sd *SourceDependency) GetOrAddFile(file string, ba BuildAction) (adjacency
 	}
 }
 
-func (sd *SourceDependency) getLinkOptionsForComponent() ([]gcc.GCCOption, error) {
-	var opts []gcc.GCCOption
+func (sd *SourceDependency) getLinkOptionsForComponent() ([]compiler.CompilerOption, error) {
+	var opts []compiler.CompilerOption
 	if len(sd.component.Requires) > 0 {
-		opts = append(opts, gcc.WithLibDir(sd.project.Config.GetLibDirectory()))
+		opts = append(opts, compiler.WithLibraryDirectory(sd.project.Config.GetLibDirectory()))
 	}
 	for _, d := range sd.component.Requires {
 		dep, err := sd.project.GetComponent(d)
 		if err != nil {
 			return nil, err
 		}
-		opts = append(opts, gcc.WithLib(dep.Name))
+		opts = append(opts, compiler.WithLibrary(dep.Name))
 	}
 	return opts, nil
 }
 
-func (sd *SourceDependency) getIncludesOptionsForComponent() ([]gcc.GCCOption, error) {
-	var opts []gcc.GCCOption
+func (sd *SourceDependency) getIncludesOptionsForComponent() ([]compiler.CompilerOption, error) {
+	var opts []compiler.CompilerOption
 	includeBase := sd.project.Config.GetExportedHeadersDirectory()
 	if sd.component.Type == project.TypeLibrary {
-		opts = append(opts, gcc.WithInclude(filepath.Join(includeBase, sd.component.Name)))
+		opts = append(opts, compiler.WithIncludeDirectory(filepath.Join(includeBase, sd.component.Name)))
 	}
 	for _, d := range sd.component.Requires {
 		dep, err := sd.project.GetHeaderDirForComponent(d)
 		if err != nil {
 			return nil, err
 		}
-		opts = append(opts, gcc.WithInclude(dep))
+		opts = append(opts, compiler.WithIncludeDirectory(dep))
 	}
 
+	return opts, nil
+}
+
+func (sd *SourceDependency) getCompilerOptionsForComponent() ([]compiler.CompilerOption, error) {
+	var opts []compiler.CompilerOption
+	if o, err := sd.getIncludesOptionsForComponent(); err != nil {
+		return nil, err
+	} else {
+		opts = append(opts, o...)
+	}
+	if o, err := sd.getLinkOptionsForComponent(); err != nil {
+		return nil, err
+	} else {
+		opts = append(opts, o...)
+	}
 	return opts, nil
 }
 
@@ -168,8 +183,8 @@ func (sd *SourceDependency) ProcessFile(file string) error {
 	if err != nil {
 		return err
 	}
-	compiler := gcc.NewGPP(includeOpts...)
-	target, sources, err := compiler.GetBuildInfoForFile(obj, file)
+	compiler := compiler.NewCompiler(includeOpts...)
+	target, sources, err := compiler.GetFileDependencies(obj, file)
 	if err != nil {
 		return err
 	}
@@ -195,8 +210,8 @@ func (sd *SourceDependency) ProcessFile(file string) error {
 }
 
 func (sd *SourceDependency) CheckWhatNeedsToBeRebuilt() bool {
-	var checkNode func(adjacencylist.VertexDescriptor)
-	checkNode = func(v adjacencylist.VertexDescriptor) {
+	var checkNode func(alist.VertexDescriptor)
+	checkNode = func(v alist.VertexDescriptor) {
 		oe, _ := sd.g.OutEdges(v) // @todo handle error
 		for _, ed := range oe {
 			target, _ := sd.g.Target(ed)
@@ -231,8 +246,8 @@ func (sd *SourceDependency) CheckWhatNeedsToBeRebuilt() bool {
 
 func (B *Builder) GetSourcesDependencies(proj *project.Project, component *project.Component) (*SourceDependency, error) {
 	sd := &SourceDependency{
-		g:             adjacencylist.NewGraph[FileDesc, BuildAction](adjacencylist.DirectedGraph),
-		filesVertices: make(map[string]adjacencylist.VertexDescriptor),
+		g:             alist.NewGraph[FileDesc, BuildAction](alist.DirectedGraph),
+		filesVertices: make(map[string]alist.VertexDescriptor),
 		project:       proj,
 		component:     component,
 	}
@@ -275,23 +290,23 @@ func (B *Builder) GetSourcesDependencies(proj *project.Project, component *proje
 
 func (B *Builder) Build() error {
 	g := B.sourcesToBuild.g
-	var compiler *gcc.GCC
-	compilerOptions, err := B.sourcesToBuild.getIncludesOptionsForComponent()
+	var comp compiler.Compiler
+	compilerOptions, err := B.sourcesToBuild.getCompilerOptionsForComponent()
 	if err != nil {
 		return err
 	}
 	switch B.buildKind {
 	case buildLib:
-		compilerOptions = append(compilerOptions, gcc.TargetLib)
+		compilerOptions = append(compilerOptions, compiler.TargetLib)
 	}
 	linkOpts, err := B.sourcesToBuild.getLinkOptionsForComponent()
 	if err != nil {
 		return err
 	}
 	compilerOptions = append(compilerOptions, linkOpts...)
-	compiler = gcc.NewGPP(compilerOptions...)
-	var buildNode func(adjacencylist.VertexDescriptor) error
-	buildNode = func(v adjacencylist.VertexDescriptor) error {
+	comp = compiler.NewCompiler(compilerOptions...)
+	var buildNode func(alist.VertexDescriptor) error
+	buildNode = func(v alist.VertexDescriptor) error {
 		oe, err := g.OutEdges(v)
 		if err != nil {
 			return err
@@ -318,7 +333,7 @@ func (B *Builder) Build() error {
 		}
 
 		if len(oe) > 0 && g.GetVertexAttribute(v).action == BACompile {
-			var source adjacencylist.VertexDescriptor
+			var source alist.VertexDescriptor
 			for _, ed := range oe {
 				if *g.GetEdgeAttribute(ed) == BACompile {
 					source, err = g.Target(ed)
@@ -328,7 +343,7 @@ func (B *Builder) Build() error {
 					break
 				}
 			}
-			err := compiler.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
+			err := comp.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
 			if err != nil {
 				return err
 			}
@@ -341,7 +356,7 @@ func (B *Builder) Build() error {
 				}
 				sources = append(sources, g.GetVertexAttribute(source).name)
 			}
-			err = compiler.LinkFile(g.GetVertexAttribute(v).name, sources...)
+			err = comp.LinkFiles(g.GetVertexAttribute(v).name, sources...)
 			if err != nil {
 				return err
 			}
