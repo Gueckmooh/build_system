@@ -81,7 +81,7 @@ func (p *Project) GetHeaderDirForComponent(componentName string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(p.Config.GetExportedHeadersDirectory(), c.Name), nil
+	return filepath.Join(p.Config.GetExportedHeadersDirectory(true), c.Name), nil
 }
 
 func (p *Project) GetComponentFiles(root string) ([]string, error) {

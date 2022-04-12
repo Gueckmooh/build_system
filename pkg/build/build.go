@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,117 +19,73 @@ import (
 type BuildKind int8
 
 const (
-	buildExe BuildKind = iota
-	buildLib
-	buildUnknown
-)
-
-type Builder struct {
-	Project          *project.Project
-	buildUpstream    bool
-	sourcesToBuild   *SourceDependency
-	buildKind        BuildKind
-	componentToBuild string
-	component        *project.Component
-}
-
-func BuildExe(b *Builder) {
-	b.buildKind = buildExe
-}
-
-// func BuildLib(b *Builder) {
-// 	b.buildKind = buildLib
-// }
-
-func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) *Builder {
-	builder := &Builder{
-		Project:          p,
-		buildUpstream:    false,
-		buildKind:        buildUnknown,
-		componentToBuild: ctb,
-	}
-	for _, opt := range opts {
-		opt(builder)
-	}
-
-	return builder
-}
-
-func (B *Builder) prepareBuildArea() error {
-	err := fsutil.MkdirIfNotExist(B.Project.Config.BuildRootDirectory)
-	if err != nil {
-		return err
-	}
-
-	err = fsutil.MkdirIfNotExist(filepath.Join(B.Project.Config.BuildRootDirectory,
-		B.Project.Config.BinDirectory))
-	if err != nil {
-		return err
-	}
-
-	err = fsutil.MkdirIfNotExist(filepath.Join(B.Project.Config.BuildRootDirectory,
-		B.Project.Config.ObjDirectory))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-type BuildAction int8
-
-func buildAction(ba BuildAction) *BuildAction { return &ba }
-
-const (
-	BACompile BuildAction = iota
-	BALink
-	BANone
-	BAUnknown
+	fileSourceKind int8 = iota
+	fileLinkedKind
+	fileObjectKind
 )
 
 type FileDesc struct {
 	name             string
 	needsToBeRebuilt bool
-	action           BuildAction
+	kind             int8
 }
 
-func NewFileDesc(name string, ba BuildAction) *FileDesc {
+func newFileDesc(name string, kind int8) *FileDesc {
 	return &FileDesc{
 		name:             name,
 		needsToBeRebuilt: false,
-		action:           ba,
+		kind:             kind,
 	}
 }
 
-type SourceDependency struct {
-	g             *alist.Graph[FileDesc, BuildAction]
-	target        alist.VertexDescriptor
-	filesVertices map[string]alist.VertexDescriptor
-	project       *project.Project
-	component     *project.Component
+type Builder struct {
+	Project          *project.Project
+	buildUpstream    bool
+	componentToBuild string
+	component        *project.Component
+	filesGraph       *alist.Graph[FileDesc, alist.AttributeNone]
+	targetVertex     alist.VertexDescriptor
+	filesVertices    map[string]alist.VertexDescriptor
 }
 
-func (sd *SourceDependency) GetOrAddFile(file string, ba BuildAction) (alist.VertexDescriptor, error) {
-	fp, err := sd.project.GetRelPathForFile(file)
+func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, error) {
+	component, err := p.GetComponent(ctb)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	if v, ok := sd.filesVertices[fp]; ok {
-		return v, nil
+
+	builder := &Builder{
+		Project:          p,
+		buildUpstream:    false,
+		componentToBuild: ctb,
+		component:        component,
+		filesGraph:       alist.NewGraph[FileDesc, alist.AttributeNone](alist.DirectedGraph),
+		filesVertices:    make(map[string]alist.VertexDescriptor),
+	}
+	for _, opt := range opts {
+		opt(builder)
+	}
+
+	return builder, nil
+}
+
+func (B *Builder) getOrCreateFileVertex(file string, kind int8) alist.VertexDescriptor {
+	if v, ok := B.filesVertices[file]; ok {
+		return v
 	} else {
-		v := sd.g.AddVertex(NewFileDesc(fp, ba))
-		sd.filesVertices[fp] = v
-		return v, nil
+		v := B.filesGraph.AddVertex(newFileDesc(file, kind))
+		B.filesVertices[file] = v
+		return v
 	}
 }
 
-func (sd *SourceDependency) getLinkOptionsForComponent() ([]compiler.CompilerOption, error) {
+func (B *Builder) getLinkOptionsForComponent() ([]compiler.CompilerOption, error) {
 	var opts []compiler.CompilerOption
-	if len(sd.component.Requires) > 0 {
-		opts = append(opts, compiler.WithLibraryDirectory(sd.project.Config.GetLibDirectory()))
+	if len(B.component.Requires) > 0 {
+		opts = append(opts, compiler.WithLibraryDirectory(B.Project.Config.GetLibDirectory(true)))
 	}
-	for _, d := range sd.component.Requires {
-		dep, err := sd.project.GetComponent(d)
+	for _, d := range B.component.Requires {
+		dep, err := B.Project.GetComponent(d)
 		if err != nil {
 			return nil, err
 		}
@@ -137,14 +94,14 @@ func (sd *SourceDependency) getLinkOptionsForComponent() ([]compiler.CompilerOpt
 	return opts, nil
 }
 
-func (sd *SourceDependency) getIncludesOptionsForComponent() ([]compiler.CompilerOption, error) {
+func (B *Builder) getIncludesOptionsForComponent() ([]compiler.CompilerOption, error) {
 	var opts []compiler.CompilerOption
-	includeBase := sd.project.Config.GetExportedHeadersDirectory()
-	if sd.component.Type == project.TypeLibrary {
-		opts = append(opts, compiler.WithIncludeDirectory(filepath.Join(includeBase, sd.component.Name)))
+	includeBase := B.Project.Config.GetExportedHeadersDirectory(true)
+	if B.component.Type == project.TypeLibrary {
+		opts = append(opts, compiler.WithIncludeDirectory(filepath.Join(includeBase, B.component.Name)))
 	}
-	for _, d := range sd.component.Requires {
-		dep, err := sd.project.GetHeaderDirForComponent(d)
+	for _, d := range B.component.Requires {
+		dep, err := B.Project.GetHeaderDirForComponent(d)
 		if err != nil {
 			return nil, err
 		}
@@ -154,14 +111,14 @@ func (sd *SourceDependency) getIncludesOptionsForComponent() ([]compiler.Compile
 	return opts, nil
 }
 
-func (sd *SourceDependency) getCompilerOptionsForComponent() ([]compiler.CompilerOption, error) {
+func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, error) {
 	var opts []compiler.CompilerOption
-	if o, err := sd.getIncludesOptionsForComponent(); err != nil {
+	if o, err := B.getIncludesOptionsForComponent(); err != nil {
 		return nil, err
 	} else {
 		opts = append(opts, o...)
 	}
-	if o, err := sd.getLinkOptionsForComponent(); err != nil {
+	if o, err := B.getLinkOptionsForComponent(); err != nil {
 		return nil, err
 	} else {
 		opts = append(opts, o...)
@@ -169,142 +126,156 @@ func (sd *SourceDependency) getCompilerOptionsForComponent() ([]compiler.Compile
 	return opts, nil
 }
 
-func (sd *SourceDependency) ProcessFile(file string) error {
-	fileWithoutSuffix := strings.TrimSuffix(file, filepath.Ext(file))
-
-	base, err := filepath.Rel(sd.component.Path, fileWithoutSuffix)
-	if err != nil {
-		return err
-	}
-
-	obj := filepath.Join(sd.project.Config.GetObjDirectory(), sd.component.Name, base+".o")
-
-	includeOpts, err := sd.getIncludesOptionsForComponent()
-	if err != nil {
-		return err
-	}
-	compiler := compiler.NewCompiler(includeOpts...)
-	target, sources, err := compiler.GetFileDependencies(obj, file)
-	if err != nil {
-		return err
-	}
-
-	objV, err := sd.GetOrAddFile(target, BACompile)
-	if err != nil {
-		return err
-	}
-	sd.g.AddEdge(sd.target, objV, buildAction(BALink))
-
-	for _, f := range sources {
-		fileV, err := sd.GetOrAddFile(f, BANone)
+func (B *Builder) computeWhatNeedsToBeRebuilt() (bool, error) {
+	var checkNode func(alist.VertexDescriptor) error
+	checkNode = func(v alist.VertexDescriptor) error {
+		oe, err := B.filesGraph.OutEdges(v)
 		if err != nil {
 			return err
 		}
-		if ccpp.IsCPPSourceFile(f) {
-			sd.g.AddEdge(objV, fileV, buildAction(BACompile))
+		for _, ed := range oe {
+			target, _ := B.filesGraph.Target(ed)
+			checkNode(target)
+		}
+		if B.filesGraph.IsLeef(v) {
+			return nil
+		}
+
+		stat, err := os.Stat(B.filesGraph.GetVertexAttribute(v).name)
+		if os.IsNotExist(err) {
+			B.filesGraph.GetVertexAttribute(v).needsToBeRebuilt = true
+			return nil
+		}
+
+		for _, ed := range oe {
+			target, _ := B.filesGraph.Target(ed)
+			if B.filesGraph.GetVertexAttribute(target).needsToBeRebuilt {
+				B.filesGraph.GetVertexAttribute(v).needsToBeRebuilt = true
+				return nil
+			}
+			statTarget, _ := os.Stat(B.filesGraph.GetVertexAttribute(target).name) // @todo handle error
+			if stat.ModTime().Before(statTarget.ModTime()) {
+				B.filesGraph.GetVertexAttribute(v).needsToBeRebuilt = true
+				return nil
+			}
+		}
+		return nil
+	}
+	err := checkNode(B.targetVertex)
+	if err != nil {
+		return false, err
+	}
+	return B.filesGraph.GetVertexAttribute(B.targetVertex).needsToBeRebuilt, nil
+}
+
+func (B *Builder) computeFilesDependencies() error {
+	sourceMatchers := functional.ListMap(B.component.Sources,
+		func(s project.FilesPattern) *globbing.Pattern {
+			return globbing.NewPattern(string(s))
+		})
+
+	sourceFiles, err := fsutil.GetMatchingFiles(sourceMatchers, B.component.Path)
+	if err != nil {
+		return err
+	}
+	sourceFiles = ccpp.FilterCPPSourceFiles(sourceFiles)
+	sourceFiles, err = fsutil.RelAll(B.Project.Config.ProjectRootDirectory, sourceFiles)
+	if err != nil {
+		return err
+	}
+
+	var targetDir string
+	switch B.component.Type {
+	case project.TypeExecutable:
+		targetDir = B.Project.Config.GetBinDirectory(true)
+	case project.TypeLibrary:
+		targetDir = B.Project.Config.GetLibDirectory(true)
+	}
+
+	targetPath := filepath.Join(targetDir, B.component.GetTargetName())
+	targetVertex := B.filesGraph.AddVertex(newFileDesc(targetPath, fileLinkedKind))
+	B.targetVertex = targetVertex
+
+	for _, file := range sourceFiles {
+		err := B.computeFileDependency(file)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (B *Builder) computeFileDependency(sourceFile string) error {
+	fileWithoutSuffix := strings.TrimSuffix(sourceFile, filepath.Ext(sourceFile))
+	fileWithoutSuffix, err := filepath.Abs(fileWithoutSuffix)
+	if err != nil {
+		return err
+	}
+	fileWithoutSuffix, err = filepath.Rel(B.component.Path, fileWithoutSuffix)
+	if err != nil {
+		return err
+	}
+
+	targetFile := filepath.Join(B.Project.Config.GetObjDirectory(true), B.component.Name,
+		fileWithoutSuffix+".o")
+
+	compilerOpts, err := B.getCompilerOptionsForComponent()
+	if err != nil {
+		return err
+	}
+	compiler := compiler.NewCompiler(compilerOpts...)
+	target, sources, err := compiler.GetFileDependencies(targetFile, sourceFile)
+	if err != nil {
+		return err
+	}
+
+	targetVertex := B.getOrCreateFileVertex(target, fileObjectKind)
+
+	B.filesGraph.AddEdge(B.targetVertex, targetVertex)
+
+	for _, file := range sources {
+		fileV := B.getOrCreateFileVertex(file, fileSourceKind)
+		if ccpp.IsCPPSourceFile(file) {
+			B.filesGraph.AddEdge(targetVertex, fileV)
 		} else {
-			sd.g.AddEdge(objV, fileV, buildAction(BANone))
+			B.filesGraph.AddEdge(targetVertex, fileV)
 		}
 	}
 	return nil
 }
 
-func (sd *SourceDependency) CheckWhatNeedsToBeRebuilt() bool {
-	var checkNode func(alist.VertexDescriptor)
-	checkNode = func(v alist.VertexDescriptor) {
-		oe, _ := sd.g.OutEdges(v) // @todo handle error
-		for _, ed := range oe {
-			target, _ := sd.g.Target(ed)
-			checkNode(target)
-		}
-		if sd.g.IsLeef(v) {
-			return
-		}
-
-		stat, err := os.Stat(sd.g.GetVertexAttribute(v).name)
-		if os.IsNotExist(err) {
-			sd.g.GetVertexAttribute(v).needsToBeRebuilt = true
-			return
-		}
-
-		for _, ed := range oe {
-			target, _ := sd.g.Target(ed)
-			if sd.g.GetVertexAttribute(target).needsToBeRebuilt {
-				sd.g.GetVertexAttribute(v).needsToBeRebuilt = true
-				return
-			}
-			statTarget, _ := os.Stat(sd.g.GetVertexAttribute(target).name) // @todo handle error
-			if stat.ModTime().Before(statTarget.ModTime()) {
-				sd.g.GetVertexAttribute(v).needsToBeRebuilt = true
-				return
-			}
-		}
-	}
-	checkNode(sd.target)
-	return sd.g.GetVertexAttribute(sd.target).needsToBeRebuilt
-}
-
-func (B *Builder) GetSourcesDependencies(proj *project.Project, component *project.Component) (*SourceDependency, error) {
-	sd := &SourceDependency{
-		g:             alist.NewGraph[FileDesc, BuildAction](alist.DirectedGraph),
-		filesVertices: make(map[string]alist.VertexDescriptor),
-		project:       proj,
-		component:     component,
-	}
-	g := sd.g
-
-	srcMatchers := functional.ListMap(component.Sources, func(s project.FilesPattern) *globbing.Pattern {
-		return globbing.NewPattern(string(s))
-	})
-
-	files, err := fsutil.GetMatchingFiles(srcMatchers, component.Path)
+func (B *Builder) getSourceToCompile(v alist.VertexDescriptor) (alist.VertexDescriptor, error) {
+	oe, err := B.filesGraph.OutEdges(v)
 	if err != nil {
-		return nil, fmt.Errorf("Error while getting sources files of component %s\n\t%s",
-			component.Name, err.Error())
+		return 0, err
 	}
-	files = ccpp.FilterCPPSourceFiles(files)
-
-	var buildDir string
-	switch component.Type {
-	case project.TypeExecutable:
-		buildDir = B.Project.Config.GetBinDirectory()
-	case project.TypeLibrary:
-		buildDir = B.Project.Config.GetLibDirectory()
-	}
-	targetName := filepath.Join(buildDir, component.GetTargetName())
-	targetName, err = sd.project.GetRelPathForFile(targetName)
-	if err != nil {
-		return nil, err
-	}
-	target := g.AddVertex(NewFileDesc(targetName, BALink))
-	sd.target = target
-	for _, f := range files {
-		err := sd.ProcessFile(f)
+	for _, ed := range oe {
+		source, err := B.filesGraph.Target(ed)
 		if err != nil {
-			return nil, err
+			return 0, err
+		}
+		if ccpp.IsCPPSourceFile(B.filesGraph.GetVertexAttribute(source).name) {
+			return source, nil
 		}
 	}
-
-	return sd, nil
+	return 0, fmt.Errorf("Could not find a source to compile for node %s",
+		B.filesGraph.GetVertexAttribute(v).name)
 }
 
 func (B *Builder) Build() error {
-	g := B.sourcesToBuild.g
+	g := B.filesGraph
 	var comp compiler.Compiler
-	compilerOptions, err := B.sourcesToBuild.getCompilerOptionsForComponent()
+	compilerOptions, err := B.getCompilerOptionsForComponent()
 	if err != nil {
 		return err
 	}
-	switch B.buildKind {
-	case buildLib:
+	switch B.component.Type {
+	case project.TypeLibrary:
 		compilerOptions = append(compilerOptions, compiler.TargetLib)
 	}
-	linkOpts, err := B.sourcesToBuild.getLinkOptionsForComponent()
-	if err != nil {
-		return err
-	}
-	compilerOptions = append(compilerOptions, linkOpts...)
 	comp = compiler.NewCompiler(compilerOptions...)
+
 	var buildNode func(alist.VertexDescriptor) error
 	buildNode = func(v alist.VertexDescriptor) error {
 		oe, err := g.OutEdges(v)
@@ -322,32 +293,29 @@ func (B *Builder) Build() error {
 				return err
 			}
 		}
-		if g.IsLeef(v) || !g.GetVertexAttribute(v).needsToBeRebuilt {
+		if !g.GetVertexAttribute(v).needsToBeRebuilt {
 			return nil
 		}
 
+		// Make sure the directory exists
 		dir := filepath.Dir(g.GetVertexAttribute(v).name)
 		err = fsutil.MkdirRecIfNotExist(dir)
 		if err != nil {
 			return err
 		}
 
-		if len(oe) > 0 && g.GetVertexAttribute(v).action == BACompile {
-			var source alist.VertexDescriptor
-			for _, ed := range oe {
-				if *g.GetEdgeAttribute(ed) == BACompile {
-					source, err = g.Target(ed)
-					if err != nil {
-						return err
-					}
-					break
-				}
-			}
-			err := comp.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
+		// Compile object files
+		if len(oe) > 0 && g.GetVertexAttribute(v).kind == fileObjectKind {
+			source, err := B.getSourceToCompile(v)
 			if err != nil {
 				return err
 			}
-		} else if len(oe) > 0 && g.GetVertexAttribute(v).action == BALink {
+			err = comp.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
+			if err != nil {
+				return err
+			}
+			// Link linkable file
+		} else if len(oe) > 0 && g.GetVertexAttribute(v).kind == fileLinkedKind {
 			var sources []string
 			for _, ed := range oe {
 				source, err := g.Target(ed)
@@ -363,35 +331,33 @@ func (B *Builder) Build() error {
 		}
 		return nil
 	}
-	return buildNode(B.sourcesToBuild.target)
+	return buildNode(B.targetVertex)
 }
 
-func (B *Builder) tryBuildComponent(component *project.Component) (bool, error) {
-	headersHasBeenExported, err := B.exportHeaders()
+func (B *Builder) tryBuildComponent() (bool, error) {
+	headersExported, err := B.exportHeaders()
 	if err != nil {
 		return false, err
 	}
 
-	if err := B.prepareBuildArea(); err != nil {
-		return false, fmt.Errorf("Fail to prepare build area:\n\t%s", err.Error())
+	if err := B.computeFilesDependencies(); err != nil {
+		return false, err
 	}
 
-	srcDeps, err := B.GetSourcesDependencies(B.Project, component)
+	needBuild, err := B.computeWhatNeedsToBeRebuilt()
 	if err != nil {
 		return false, err
 	}
 
-	needBuild := srcDeps.CheckWhatNeedsToBeRebuilt()
-	B.sourcesToBuild = srcDeps
-
-	// vertexWritterOption := adjacencylist.WithVertexLabelWritter[FileDesc, BuildAction](func(s *FileDesc) string {
-	// 	color := "black"
-	// 	if s.needsToBeRebuilt {
-	// 		color = "red"
-	// 	}
-	// 	return fmt.Sprintf(`[label="%s",color="%s"]`, s.name, color)
-	// })
-	// ioutil.WriteFile("/tmp/graphviz.dot", []byte(srcDeps.g.DumpGraphviz(vertexWritterOption)), 0o600)
+	vertexWritterOption := alist.WithVertexLabelWritter[FileDesc, alist.AttributeNone](
+		func(s *FileDesc) string {
+			color := "black"
+			if s.needsToBeRebuilt {
+				color = "red"
+			}
+			return fmt.Sprintf(`[label="%s",color="%s"]`, s.name, color)
+		})
+	ioutil.WriteFile("/tmp/graphviz.dot", []byte(B.filesGraph.DumpGraphviz(vertexWritterOption)), 0o600)
 
 	if needBuild {
 		err = B.Build()
@@ -400,30 +366,16 @@ func (B *Builder) tryBuildComponent(component *project.Component) (bool, error) 
 		}
 	}
 
-	return needBuild || headersHasBeenExported, nil
+	return headersExported || needBuild, nil
 }
 
 func (B *Builder) BuildComponent() error {
-	var component *project.Component
-	if mc := functional.ListFindIf(B.Project.Components, func(c *project.Component) bool {
-		return c.Name == B.componentToBuild
-	}); mc != nil {
-		component = *mc
-	} else {
-		return fmt.Errorf("Could not find component %s", B.componentToBuild)
-	}
-	B.component = component
-
-	switch component.Type {
-	case project.TypeExecutable:
-		B.buildKind = buildExe
-	case project.TypeLibrary:
-		B.buildKind = buildLib
-	case project.TypeUnknown:
+	if B.component.Type == project.TypeUnknown {
 		return fmt.Errorf("Unable to build component with unknown type %s", B.componentToBuild)
 	}
+
 	fmt.Printf("--------------- Building component '%s'...\n", B.componentToBuild)
-	done, err := B.tryBuildComponent(component)
+	done, err := B.tryBuildComponent()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error while building componnent '%s':\n\t%s\n", B.componentToBuild, err.Error())
 		fmt.Printf("--------------- Failed to build component '%s'\n", B.componentToBuild)

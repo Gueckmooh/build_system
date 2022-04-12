@@ -30,23 +30,42 @@ func GetDefaultConfig(root string) *Config {
 	}
 }
 
-func (c *Config) GetBinDirectory() string {
-	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.BinDirectory)
+func (c *Config) GetBinDirectory(rel bool) string {
+	if rel {
+		return filepath.Join(c.BuildRootDirectory, c.BinDirectory)
+	} else {
+		return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.BinDirectory)
+	}
 }
 
-func (c *Config) GetBuildDirectory() string {
-	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory)
+func (c *Config) GetLibDirectory(rel bool) string {
+	if rel {
+		return filepath.Join(c.BuildRootDirectory, c.LibDirectory)
+	} else {
+		return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.LibDirectory)
+	}
 }
 
-func (c *Config) GetLibDirectory() string {
-	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.LibDirectory)
+func (c *Config) GetBuildDirectory(rel bool) string {
+	if rel {
+		return c.BuildRootDirectory
+	} else {
+		return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory)
+	}
 }
 
-func (c *Config) GetExportedHeadersDirectory() string {
-	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory,
-		c.ExportHeadersDirectory)
+func (c *Config) GetExportedHeadersDirectory(rel bool) string {
+	if rel {
+		return filepath.Join(c.BuildRootDirectory, c.ExportHeadersDirectory)
+	} else {
+		return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.ExportHeadersDirectory)
+	}
 }
 
-func (c *Config) GetObjDirectory() string {
-	return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.ObjDirectory)
+func (c *Config) GetObjDirectory(rel bool) string {
+	if rel {
+		return filepath.Join(c.BuildRootDirectory, c.ObjDirectory)
+	} else {
+		return filepath.Join(c.ProjectRootDirectory, c.BuildRootDirectory, c.ObjDirectory)
+	}
 }

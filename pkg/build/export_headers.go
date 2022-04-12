@@ -26,7 +26,7 @@ func (B *Builder) getCopiesForExportHeaders(p *globbing.PatternReplace, root str
 }
 
 func (B *Builder) getComponentHeaderExportsDir() string {
-	return filepath.Join(B.Project.Config.GetExportedHeadersDirectory(), B.component.Name)
+	return filepath.Join(B.Project.Config.GetExportedHeadersDirectory(true), B.component.Name)
 }
 
 const trampolineTemplate = `// file {{.Filename}}
@@ -83,7 +83,7 @@ func (B *Builder) getFilesToCopyOrRemove(copies map[string]string) (map[string]s
 	}
 
 	if _, err := os.Stat(B.getComponentHeaderExportsDir()); !os.IsNotExist(err) {
-		baseToPath, err := filepath.Rel(B.Project.Config.ProjectRootDirectory, B.getComponentHeaderExportsDir())
+		baseToPath := B.getComponentHeaderExportsDir()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -113,10 +113,7 @@ func (B *Builder) getExportedHeaderPaths(from, to string) (string, string, error
 	if err != nil {
 		return "", "", err
 	}
-	baseToPath, err := filepath.Rel(B.Project.Config.ProjectRootDirectory, B.getComponentHeaderExportsDir())
-	if err != nil {
-		return "", "", err
-	}
+	baseToPath := B.getComponentHeaderExportsDir()
 	realFrom := filepath.Join(baseFromPath, from)
 	realTo := filepath.Join(baseToPath, to)
 	return realFrom, realTo, nil

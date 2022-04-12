@@ -68,7 +68,10 @@ func tryBuildMain(opts Options) error {
 			return err
 		}
 	} else {
-		builder := build.NewBuilder(proj, ctb)
+		builder, err := build.NewBuilder(proj, ctb)
+		if err != nil {
+			return err
+		}
 		err = builder.BuildComponent()
 		if err != nil {
 			return err
@@ -97,7 +100,10 @@ func BuildUpstream(proj *project.Project, ctb string) error {
 				return err
 			}
 		}
-		builder := build.NewBuilder(proj, g.GetVertexAttribute(v).Name)
+		builder, err := build.NewBuilder(proj, g.GetVertexAttribute(v).Name)
+		if err != nil {
+			return err
+		}
 		err = builder.BuildComponent()
 		if err != nil {
 			return err

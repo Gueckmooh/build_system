@@ -33,8 +33,8 @@ func tryCleanMain(opts Options) error {
 		return err
 	}
 
-	fmt.Printf("Removing dir %s\n", proj.Config.GetBuildDirectory())
-	err = os.RemoveAll(proj.Config.GetBuildDirectory())
+	fmt.Printf("Removing dir %s\n", proj.Config.GetBuildDirectory(true))
+	err = os.RemoveAll(proj.Config.GetBuildDirectory(true))
 	if err != nil {
 		return err
 	}

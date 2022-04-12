@@ -93,3 +93,15 @@ func MkdirRecIfNotExist(dirname string) error {
 	}
 	return nil
 }
+
+func RelAll(basepath string, files []string) ([]string, error) {
+	var rels []string
+	for _, file := range files {
+		relfile, err := filepath.Rel(basepath, file)
+		if err != nil {
+			return nil, err
+		}
+		rels = append(rels, relfile)
+	}
+	return rels, nil
+}
