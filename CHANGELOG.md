@@ -9,3 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Read basic configuration
 - Build basic configuration
 - Build basic configuration with several files including headers
+- Build execuable and libraries
+- Export headers for libraries
+- Add 'clean' target
