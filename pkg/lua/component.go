@@ -35,6 +35,7 @@ var (
 		"Languages":       newTableSetter("_languages_"),
 		"AddSources":      newTablePusher("_sources_"),
 		"ExportedHeaders": newTableSetter("_exported_headers_"),
+		"Requires":        newTableSetter("_requires_"),
 	}
 )
 
@@ -56,6 +57,7 @@ func NewComponent(L *lua.LState, name string) *lua.LTable {
 	L.SetField(table, "_sources_", lua.LNil)
 	L.SetField(table, "_path_", lua.LString(filepath.Dir(currentComponentFile)))
 	L.SetField(table, "_exported_headers_", lua.LNil)
+	L.SetField(table, "_requires_", lua.LNil)
 
 	return table
 }
@@ -108,6 +110,16 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 		exported_headers = luaSTableToSMap(vexported_headers.(*lua.LTable))
 	}
 
+	vrequires := L.GetField(T, "_requires_")
+	if vrequires.Type() != lua.LTTable && vrequires.Type() != lua.LTNil {
+		return nil, fmt.Errorf("Error while getting component dependencies, unexpected type %s",
+			vrequires.Type().String())
+	}
+	var requires []string
+	if vrequires.Type() == lua.LTTable {
+		requires = luaSTableToSTable(vrequires.(*lua.LTable))
+	}
+
 	proj := &project.Component{
 		Name:            name,
 		Languages:       languages,
@@ -115,6 +127,7 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 		Type:            ty,
 		Path:            path,
 		ExportedHeaders: exported_headers,
+		Requires:        requires,
 	}
 
 	return proj, nil

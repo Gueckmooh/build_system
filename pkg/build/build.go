@@ -2,7 +2,6 @@ package build
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,14 +122,36 @@ func (sd *SourceDependency) GetOrAddFile(file string, ba BuildAction) (adjacency
 	}
 }
 
-func (sd *SourceDependency) getIncludesOptionsForComponent() []gcc.GCCOption {
+func (sd *SourceDependency) getLinkOptionsForComponent() ([]gcc.GCCOption, error) {
+	var opts []gcc.GCCOption
+	if len(sd.component.Requires) > 0 {
+		opts = append(opts, gcc.WithLibDir(sd.project.Config.GetLibDirectory()))
+	}
+	for _, d := range sd.component.Requires {
+		dep, err := sd.project.GetComponent(d)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, gcc.WithLib(dep.Name))
+	}
+	return opts, nil
+}
+
+func (sd *SourceDependency) getIncludesOptionsForComponent() ([]gcc.GCCOption, error) {
 	var opts []gcc.GCCOption
 	includeBase := sd.project.Config.GetExportedHeadersDirectory()
 	if sd.component.Type == project.TypeLibrary {
 		opts = append(opts, gcc.WithInclude(filepath.Join(includeBase, sd.component.Name)))
 	}
+	for _, d := range sd.component.Requires {
+		dep, err := sd.project.GetHeaderDirForComponent(d)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, gcc.WithInclude(dep))
+	}
 
-	return opts
+	return opts, nil
 }
 
 func (sd *SourceDependency) ProcessFile(file string) error {
@@ -143,7 +164,11 @@ func (sd *SourceDependency) ProcessFile(file string) error {
 
 	obj := filepath.Join(sd.project.Config.GetObjDirectory(), sd.component.Name, base+".o")
 
-	compiler := gcc.NewGPP(sd.getIncludesOptionsForComponent()...)
+	includeOpts, err := sd.getIncludesOptionsForComponent()
+	if err != nil {
+		return err
+	}
+	compiler := gcc.NewGPP(includeOpts...)
 	target, sources, err := compiler.GetBuildInfoForFile(obj, file)
 	if err != nil {
 		return err
@@ -251,11 +276,19 @@ func (B *Builder) GetSourcesDependencies(proj *project.Project, component *proje
 func (B *Builder) Build() error {
 	g := B.sourcesToBuild.g
 	var compiler *gcc.GCC
-	compilerOptions := B.sourcesToBuild.getIncludesOptionsForComponent()
+	compilerOptions, err := B.sourcesToBuild.getIncludesOptionsForComponent()
+	if err != nil {
+		return err
+	}
 	switch B.buildKind {
 	case buildLib:
 		compilerOptions = append(compilerOptions, gcc.TargetLib)
 	}
+	linkOpts, err := B.sourcesToBuild.getLinkOptionsForComponent()
+	if err != nil {
+		return err
+	}
+	compilerOptions = append(compilerOptions, linkOpts...)
 	compiler = gcc.NewGPP(compilerOptions...)
 	var buildNode func(adjacencylist.VertexDescriptor) error
 	buildNode = func(v adjacencylist.VertexDescriptor) error {
@@ -265,8 +298,11 @@ func (B *Builder) Build() error {
 		}
 
 		for _, ed := range oe {
-			target, _ := g.Target(ed)
-			err := buildNode(target)
+			target, err := g.Target(ed)
+			if err != nil {
+				return err
+			}
+			err = buildNode(target)
 			if err != nil {
 				return err
 			}
@@ -305,12 +341,14 @@ func (B *Builder) Build() error {
 				}
 				sources = append(sources, g.GetVertexAttribute(source).name)
 			}
-			compiler.LinkFile(g.GetVertexAttribute(v).name, sources...)
+			err = compiler.LinkFile(g.GetVertexAttribute(v).name, sources...)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}
-	err := buildNode(B.sourcesToBuild.target)
-	return err
+	return buildNode(B.sourcesToBuild.target)
 }
 
 func (B *Builder) tryBuildComponent(component *project.Component) (bool, error) {
@@ -331,14 +369,14 @@ func (B *Builder) tryBuildComponent(component *project.Component) (bool, error) 
 	needBuild := srcDeps.CheckWhatNeedsToBeRebuilt()
 	B.sourcesToBuild = srcDeps
 
-	vertexWritterOption := adjacencylist.WithVertexLabelWritter[FileDesc, BuildAction](func(s *FileDesc) string {
-		color := "black"
-		if s.needsToBeRebuilt {
-			color = "red"
-		}
-		return fmt.Sprintf(`[label="%s",color="%s"]`, s.name, color)
-	})
-	ioutil.WriteFile("/tmp/graphviz.dot", []byte(srcDeps.g.DumpGraphviz(vertexWritterOption)), 0o600)
+	// vertexWritterOption := adjacencylist.WithVertexLabelWritter[FileDesc, BuildAction](func(s *FileDesc) string {
+	// 	color := "black"
+	// 	if s.needsToBeRebuilt {
+	// 		color = "red"
+	// 	}
+	// 	return fmt.Sprintf(`[label="%s",color="%s"]`, s.name, color)
+	// })
+	// ioutil.WriteFile("/tmp/graphviz.dot", []byte(srcDeps.g.DumpGraphviz(vertexWritterOption)), 0o600)
 
 	if needBuild {
 		err = B.Build()

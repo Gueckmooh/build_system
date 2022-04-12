@@ -17,6 +17,7 @@ type Component struct {
 	Type            ComponentType
 	Path            string
 	ExportedHeaders map[string]string
+	Requires        []string
 }
 
 func ComponentTypeFromString(compTy string) ComponentType {

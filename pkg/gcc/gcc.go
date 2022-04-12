@@ -53,6 +53,18 @@ func WithInclude(include string) GCCOption {
 	}
 }
 
+func WithLibDir(libDir string) GCCOption {
+	return func(g *GCC) {
+		g.libDirs = append(g.libDirs, libDir)
+	}
+}
+
+func WithLib(lib string) GCCOption {
+	return func(g *GCC) {
+		g.libs = append(g.libs, lib)
+	}
+}
+
 func NewGPP(opts ...GCCOption) *GCC {
 	gcc := &GCC{
 		gpp:        true,
@@ -139,8 +151,12 @@ func (gcc *GCC) LinkFile(target string, sources ...string) error {
 	cmd = append(cmd, []string{"-o", target}...)
 
 	fmt.Printf("Linking %s\n", target)
-	_, _, err := runCommand(cmd)
-	return err
+	_, errs, err := runCommand(cmd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", errs)
+		return fmt.Errorf("Error while linking file %s\n\t%s", target, err.Error())
+	}
+	return nil
 }
 
 func (gcc *GCC) GetBuildInfoForFile(target, source string) (string, []string, error) {
