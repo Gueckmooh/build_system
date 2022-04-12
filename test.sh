@@ -2,14 +2,12 @@
 # set -x
 set -e
 
-EX=examples/minimal_several_components
+PATH=$PATH:$(realpath bin)
+EX=examples/basic/sources/hello
 
 make
 
 pushd "$EX" >/dev/null
-../../bin/bs clean
-../../bin/bs build --build-upstream
+bs clean
+bs build --build-upstream
 popd >/dev/null
-
-dot -Tpng -o /tmp/graphviz.png /tmp/graphviz.dot
-feh /tmp/graphviz.png

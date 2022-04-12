@@ -3,7 +3,7 @@ package gcc_test
 import (
 	"testing"
 
-	"github.com/gueckmooh/bs/pkg/gcc"
+	"github.com/gueckmooh/bs/pkg/compiler/gcc"
 )
 
 func TestParseM(t *testing.T) {

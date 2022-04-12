@@ -7,7 +7,10 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/alessio/shellescape"
+	"github.com/gueckmooh/bs/pkg/common/colors"
 	"github.com/gueckmooh/bs/pkg/functional"
+	log "github.com/gueckmooh/bs/pkg/logging"
 )
 
 type DebugLevel int8
@@ -84,6 +87,7 @@ func runCommand(cmd []string) (string, string, error) {
 	var outb, errb bytes.Buffer
 	exe.Stdout = &outb
 	exe.Stderr = &errb
+	log.Log.Printf("%s\n", shellescape.QuoteCommand(cmd))
 	err := exe.Run()
 	return outb.String(), errb.String(), err
 }
@@ -113,7 +117,7 @@ func (gcc *GCC) CompileFile(target, source string) error {
 
 	cmd = append(cmd, []string{"-o", target}...)
 
-	fmt.Printf("Compiling %s\n", source)
+	fmt.Printf("Compiling %s%s%s\n", colors.StyleBold, source, colors.StyleReset)
 	_, errs, err := runCommand(cmd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", errs)

@@ -76,6 +76,15 @@ func (p *Project) GetComponent(componentName string) (*Component, error) {
 	return nil, fmt.Errorf("Could not find component '%s'", componentName)
 }
 
+func (p *Project) GetComponentByPath(componentPath string) (*Component, error) {
+	for _, c := range p.Components {
+		if c.Path == componentPath {
+			return c, nil
+		}
+	}
+	return nil, fmt.Errorf("Could not find component in '%s'", componentPath)
+}
+
 func (p *Project) GetHeaderDirForComponent(componentName string) (string, error) {
 	c, err := p.GetComponent(componentName)
 	if err != nil {

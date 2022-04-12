@@ -3,10 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/gueckmooh/argparse"
 	alist "github.com/gueckmooh/bs/pkg/adjacency_list"
 	"github.com/gueckmooh/bs/pkg/build"
+	"github.com/gueckmooh/bs/pkg/common/colors"
+	"github.com/gueckmooh/bs/pkg/fsutil"
 	"github.com/gueckmooh/bs/pkg/project"
 	projectutils "github.com/gueckmooh/bs/pkg/project_utils"
 )
@@ -41,6 +44,17 @@ func tryBuildMain(opts Options) error {
 		return err
 	}
 
+	projFile, err := fsutil.FindFileUpstream(project.ProjectConfigFile, cwd)
+	if err != nil {
+		return err
+	}
+	oldcwd := cwd
+	cwd = filepath.Dir(projFile)
+	err = os.Chdir(cwd)
+	if err != nil {
+		return err
+	}
+
 	proj, err := projectutils.GetProject(cwd)
 	if err != nil {
 		return err
@@ -50,31 +64,48 @@ func tryBuildMain(opts Options) error {
 	if err != nil {
 		return err
 	}
-	// os.Exit(0)
-
 	// @todo make sure there is no cycle
 
-	ctb := proj.DefaultTarget
-	if ctb == "" {
-		if len(*opts.buildOptions.name) == 0 {
-			return fmt.Errorf("No component name given")
+	ctbs := *opts.buildOptions.name
+	if len(ctbs) == 0 {
+		if proj.DefaultTarget != "" {
+			ctbs = append(ctbs, proj.DefaultTarget)
+		} else {
+			compFile, err := fsutil.FindFileUpstream(project.ComponentConfigFile, oldcwd)
+			if err == nil {
+				ctb, err := proj.GetComponentByPath(filepath.Dir(compFile))
+				if err == nil {
+					ctbs = append(ctbs, ctb.Name)
+				}
+			}
 		}
-		ctb = (*opts.buildOptions.name)[0]
+	}
+	if len(ctbs) == 0 {
+		return fmt.Errorf("No component name given")
 	}
 
+	if len(ctbs) > 1 {
+		if *opts.buildOptions.buildUpstream {
+			fmt.Fprintf(os.Stderr, "%sWarning%s: several components given, build upstream ignored\n",
+				colors.ColorYellow, colors.ColorReset)
+			*opts.buildOptions.buildUpstream = false
+		}
+	}
 	if *opts.buildOptions.buildUpstream {
-		err = BuildUpstream(proj, ctb)
+		err = BuildUpstream(proj, ctbs[0])
 		if err != nil {
 			return err
 		}
 	} else {
-		builder, err := build.NewBuilder(proj, ctb)
-		if err != nil {
-			return err
-		}
-		err = builder.BuildComponent()
-		if err != nil {
-			return err
+		for _, ctb := range ctbs {
+			builder, err := build.NewBuilder(proj, ctb)
+			if err != nil {
+				return err
+			}
+			err = builder.BuildComponent()
+			if err != nil {
+				return err
+			}
 		}
 	}
 

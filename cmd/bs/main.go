@@ -5,10 +5,14 @@ import (
 	"os"
 
 	"github.com/gueckmooh/argparse"
+	log "github.com/gueckmooh/bs/pkg/logging"
 )
 
 type Options struct {
 	parser *argparse.Parser
+
+	debug   *bool
+	verbose *bool
 
 	buildOptions BuildOptions
 	cleanOptions CleanOptions
@@ -16,6 +20,16 @@ type Options struct {
 
 func (opts *Options) init() {
 	opts.parser = argparse.NewParser("bs", "Manages the build system")
+	opts.debug = opts.parser.Flag("", "debug", &argparse.Options{
+		Required: false,
+		Help:     "Print debug informations.",
+		Default:  false,
+	})
+	opts.verbose = opts.parser.Flag("", "verbose", &argparse.Options{
+		Required: false,
+		Help:     "Make more noise.",
+		Default:  false,
+	})
 	opts.buildOptions.init(opts.parser)
 	opts.cleanOptions.init(opts.parser)
 }
@@ -27,6 +41,13 @@ func tryMain() error {
 	err := opts.parser.Parse(os.Args)
 	if err != nil {
 		return fmt.Errorf("Fails to parse options:\n  %s\n", err.Error())
+	}
+
+	if *opts.debug {
+		log.SetDebugLogging(true)
+	}
+	if *opts.verbose {
+		log.SetVerboseLogging(true)
 	}
 
 	if opts.buildOptions.happened() {

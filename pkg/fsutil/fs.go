@@ -105,3 +105,15 @@ func RelAll(basepath string, files []string) ([]string, error) {
 	}
 	return rels, nil
 }
+
+func FindFileUpstream(filename string, root string) (string, error) {
+	if _, err := os.Stat(filepath.Join(root, filename)); os.IsNotExist(err) {
+		if root != "/" {
+			return FindFileUpstream(filename, filepath.Dir(root))
+		} else {
+			return "", fmt.Errorf("Could not find file '%s'", filename)
+		}
+	} else {
+		return filepath.Join(root, filename), nil
+	}
+}

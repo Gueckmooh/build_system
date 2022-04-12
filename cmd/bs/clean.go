@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/gueckmooh/argparse"
+	"github.com/gueckmooh/bs/pkg/fsutil"
+	"github.com/gueckmooh/bs/pkg/project"
 	projectutils "github.com/gueckmooh/bs/pkg/project_utils"
 )
 
@@ -24,6 +27,17 @@ func (opts *CleanOptions) happened() bool {
 
 func tryCleanMain(opts Options) error {
 	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	projFile, err := fsutil.FindFileUpstream(project.ProjectConfigFile, cwd)
+	if err != nil {
+		return err
+	}
+
+	cwd = filepath.Dir(projFile)
+	err = os.Chdir(cwd)
 	if err != nil {
 		return err
 	}
