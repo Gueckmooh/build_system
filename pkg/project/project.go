@@ -17,14 +17,16 @@ const (
 )
 
 type Project struct {
-	Name          string
-	Version       string
-	Languages     []LanguageID
-	Sources       []DirectoryPattern
-	Components    []*Component
-	Config        *Config
-	DefaultTarget string
-	ComponentDeps *ComponentDependencyGraph
+	Name           string
+	Version        string
+	Languages      []LanguageID
+	Sources        []DirectoryPattern
+	Components     []*Component
+	Config         *Config
+	DefaultTarget  string
+	ComponentDeps  *ComponentDependencyGraph
+	Profiles       []*Profile
+	DefaultProfile *Profile
 }
 
 type ComponentDependencyGraph struct {

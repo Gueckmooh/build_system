@@ -1,6 +1,10 @@
 package lua
 
-import lua "github.com/yuin/gopher-lua"
+import (
+	"fmt"
+
+	lua "github.com/yuin/gopher-lua"
+)
 
 func newSetter(field string) lua.LGFunction {
 	return func(L *lua.LState) int {
@@ -63,4 +67,27 @@ func luaSTableToSMap(T *lua.LTable) map[string]string {
 		}
 	})
 	return list
+}
+
+func luaGetStringInTable(L *lua.LState, T *lua.LTable, field, desc string) (string, error) {
+	vfield := L.GetField(T, field)
+	if vfield.Type() != lua.LTString {
+		return "", fmt.Errorf("Error while getting %s, unexpected type %s",
+			desc, vfield.Type().String())
+	}
+	return vfield.(lua.LString).String(), nil
+}
+
+func luaMaybeGetStringInTable(L *lua.LState, T *lua.LTable, field, desc string) (*string, error) {
+	vfield := L.GetField(T, field)
+	if vfield.Type() != lua.LTString && vfield.Type() != lua.LTNil {
+		return nil, fmt.Errorf("Error while getting %s, unexpected type %s",
+			desc, vfield.Type().String())
+	} else if vfield.Type() == lua.LTString {
+		s := new(string)
+		*s = vfield.String()
+		return s, nil
+	} else {
+		return nil, nil
+	}
 }
