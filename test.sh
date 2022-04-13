@@ -3,11 +3,13 @@
 set -e
 
 PATH=$PATH:$(realpath bin)
-EX=examples/basic/sources/hello
+EX=examples/basic
 
 make
 
 pushd "$EX" >/dev/null
 bs clean
-bs build --build-upstream
 popd >/dev/null
+
+bs build --build-upstream -C "$EX" --verbose
+"$EX"/.build/bin/hello_exe

@@ -25,6 +25,12 @@ func ProjectLoader(L *lua.LState) int {
 	L.SetField(mod, "_sources_", lua.LNil)
 	L.SetField(mod, "_default_target_", lua.LNil)
 
+	profile, profileMap := NewProfile(L, "Default")
+	L.SetField(mod, "_default_profile_", profile)
+	for k, v := range profileMap {
+		L.SetField(mod, k, v)
+	}
+
 	L.Push(mod)
 	return 1
 }
@@ -77,12 +83,26 @@ func ReadProjectFromLuaState(L *lua.LState) (*project.Project, error) {
 	sources := functional.ListMap(luaSTableToSTable(vsources.(*lua.LTable)),
 		func(s string) project.DirectoryPattern { return project.DirectoryPattern(s) })
 
+	vdefaultProfile := L.GetField(tproj, "_default_profile_")
+	if vdefaultProfile.Type() != lua.LTTable {
+		return nil, fmt.Errorf("Error while getting project default profile, unexpected type %s",
+			vdefaultProfile.Type().String())
+	}
+	defaultProfile, err := ReadProfileFromLuaTable(L, vdefaultProfile.(*lua.LTable))
+	if err != nil {
+		return nil, err
+	}
+
+	profiles := []*project.Profile{defaultProfile}
+
 	proj := &project.Project{
-		Name:          name,
-		Version:       version,
-		Languages:     languages,
-		Sources:       sources,
-		DefaultTarget: defaultTarget,
+		Name:           name,
+		Version:        version,
+		Languages:      languages,
+		Sources:        sources,
+		DefaultTarget:  defaultTarget,
+		DefaultProfile: defaultProfile,
+		Profiles:       profiles,
 	}
 
 	return proj, nil

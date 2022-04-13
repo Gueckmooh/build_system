@@ -107,6 +107,9 @@ func tryBuildMain(opts Options) error {
 		return err
 	}
 
+	fmt.Printf("profile: %#v\n", proj.DefaultProfile)
+	fmt.Printf("cppprofile: %#v\n", proj.DefaultProfile.GetCPPProfile())
+
 	err = proj.ComputeComponentDependencies()
 	if err != nil {
 		return err
