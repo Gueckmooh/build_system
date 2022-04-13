@@ -51,11 +51,15 @@ func (o *Command) addArg(a *arg) error {
 		current = current.parent
 	}
 	a.parent = o
-	o.args = append(o.args, a)
+	if a.posstring {
+		o.args = append([]*arg{a}, o.args...)
+	} else {
+		o.args = append(o.args, a)
+	}
 	return nil
 }
 
-//parseSubCommands - Parses subcommands if any
+// parseSubCommands - Parses subcommands if any
 func (o *Command) parseSubCommands(args *[]string) error {
 	if o.commands != nil && len(o.commands) > 0 {
 		// If we have subcommands and 0 args left
@@ -73,7 +77,7 @@ func (o *Command) parseSubCommands(args *[]string) error {
 	return nil
 }
 
-//parseArguments - Parses arguments
+// parseArguments - Parses arguments
 func (o *Command) parseArguments(args *[]string) error {
 	// Iterate over the args
 	for i := 0; i < len(o.args); i++ {
