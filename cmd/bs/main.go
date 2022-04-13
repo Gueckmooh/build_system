@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gueckmooh/argparse"
+	"github.com/gueckmooh/bs/pkg/argparse"
 	log "github.com/gueckmooh/bs/pkg/logging"
 )
 
@@ -13,6 +13,7 @@ type Options struct {
 
 	debug   *bool
 	verbose *bool
+	// directory *string
 
 	buildOptions BuildOptions
 	cleanOptions CleanOptions
@@ -22,13 +23,13 @@ func (opts *Options) init() {
 	opts.parser = argparse.NewParser("bs", "Manages the build system")
 	opts.debug = opts.parser.Flag("", "debug", &argparse.Options{
 		Required: false,
-		Help:     "Print debug informations.",
-		Default:  false,
+		Help:     "Print debugging information in addition to normal processing.",
+		// Default:  false,
 	})
 	opts.verbose = opts.parser.Flag("", "verbose", &argparse.Options{
 		Required: false,
 		Help:     "Make more noise.",
-		Default:  false,
+		// Default:  false,
 	})
 	opts.buildOptions.init(opts.parser)
 	opts.cleanOptions.init(opts.parser)

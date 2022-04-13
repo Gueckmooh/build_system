@@ -5,11 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gueckmooh/argparse"
 	alist "github.com/gueckmooh/bs/pkg/adjacency_list"
+	"github.com/gueckmooh/bs/pkg/argparse"
 	"github.com/gueckmooh/bs/pkg/build"
 	"github.com/gueckmooh/bs/pkg/common/colors"
 	"github.com/gueckmooh/bs/pkg/fsutil"
+	log "github.com/gueckmooh/bs/pkg/logging"
 	"github.com/gueckmooh/bs/pkg/project"
 	projectutils "github.com/gueckmooh/bs/pkg/project_utils"
 )
@@ -19,6 +20,8 @@ type BuildOptions struct {
 
 	name          *argparse.PosStringResult
 	buildUpstream *bool
+	directory     *string
+	alwaysBuild   *bool
 }
 
 func (opts *BuildOptions) init(parser *argparse.Parser) {
@@ -32,10 +35,54 @@ func (opts *BuildOptions) init(parser *argparse.Parser) {
 		Required: false,
 		Help:     "Instruct to build all the upstream components",
 	})
+	opts.directory = opts.command.String("C", "directory", &argparse.Options{
+		Validate: func(args []string) error {
+			for _, s := range args {
+				if s == "" {
+					continue
+				}
+				stats, err := os.Stat(s)
+				if err != nil {
+					return err
+				}
+				if !stats.IsDir() {
+					return fmt.Errorf("%s is not a directory", s)
+				}
+			}
+			return nil
+		},
+		Help: "Change to directory dir before reading the bsfiles or doing anything else.",
+	})
+	opts.alwaysBuild = opts.command.Flag("B", "always-build", &argparse.Options{
+		Required: false,
+		Help:     "Unconditionally build all targets.",
+	})
 }
 
 func (opts *BuildOptions) happened() bool {
 	return opts.command.Happened()
+}
+
+func tryBuildMainInDirectory(directory string, opts Options) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	log.Log.Printf("Movind to directory '%s'\n", directory)
+	err = os.Chdir(directory)
+	if err != nil {
+		return err
+	}
+	err = tryBuildMain(opts)
+	if err != nil {
+		return err
+	}
+	log.Log.Printf("Exiting directory '%s'\n", directory)
+	err = os.Chdir(cwd)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func tryBuildMain(opts Options) error {
@@ -91,14 +138,20 @@ func tryBuildMain(opts Options) error {
 			*opts.buildOptions.buildUpstream = false
 		}
 	}
+
+	var bops []build.BuildOption
+	if *opts.buildOptions.alwaysBuild {
+		bops = append(bops, build.WithAlwaysBuild)
+	}
+
 	if *opts.buildOptions.buildUpstream {
-		err = BuildUpstream(proj, ctbs[0])
+		err = BuildUpstream(proj, ctbs[0], bops)
 		if err != nil {
 			return err
 		}
 	} else {
 		for _, ctb := range ctbs {
-			builder, err := build.NewBuilder(proj, ctb)
+			builder, err := build.NewBuilder(proj, ctb, bops...)
 			if err != nil {
 				return err
 			}
@@ -112,7 +165,7 @@ func tryBuildMain(opts Options) error {
 	return nil
 }
 
-func BuildUpstream(proj *project.Project, ctb string) error {
+func BuildUpstream(proj *project.Project, ctb string, bops []build.BuildOption) error {
 	var processNode func(alist.VertexDescriptor) error
 	g := proj.ComponentDeps.G
 	processNode = func(v alist.VertexDescriptor) error {
@@ -131,7 +184,7 @@ func BuildUpstream(proj *project.Project, ctb string) error {
 				return err
 			}
 		}
-		builder, err := build.NewBuilder(proj, g.GetVertexAttribute(v).Name)
+		builder, err := build.NewBuilder(proj, g.GetVertexAttribute(v).Name, bops...)
 		if err != nil {
 			return err
 		}
@@ -149,7 +202,12 @@ func BuildUpstream(proj *project.Project, ctb string) error {
 }
 
 func buildMain(opts Options) error {
-	err := tryBuildMain(opts)
+	var err error
+	if len(*opts.buildOptions.directory) > 0 {
+		err = tryBuildMainInDirectory(*opts.buildOptions.directory, opts)
+	} else {
+		err = tryBuildMain(opts)
+	}
 	if err != nil {
 		return fmt.Errorf("Error while building components:\n  %s", err.Error())
 	}

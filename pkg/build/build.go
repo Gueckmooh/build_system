@@ -46,6 +46,7 @@ type Builder struct {
 	filesGraph       *alist.Graph[FileDesc, alist.AttributeNone]
 	targetVertex     alist.VertexDescriptor
 	filesVertices    map[string]alist.VertexDescriptor
+	alwaysBuild      bool
 }
 
 func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, error) {
@@ -61,6 +62,7 @@ func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, 
 		component:        component,
 		filesGraph:       alist.NewGraph[FileDesc, alist.AttributeNone](alist.DirectedGraph),
 		filesVertices:    make(map[string]alist.VertexDescriptor),
+		alwaysBuild:      false,
 	}
 	for _, opt := range opts {
 		opt(builder)
@@ -126,6 +128,14 @@ func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, e
 	return opts, nil
 }
 
+func (B *Builder) isBuildableNode(v alist.VertexDescriptor) bool {
+	attr := B.filesGraph.GetVertexAttribute(v)
+	if attr != nil && (attr.kind == fileLinkedKind || attr.kind == fileObjectKind) {
+		return true
+	}
+	return false
+}
+
 func (B *Builder) computeWhatNeedsToBeRebuilt() (bool, error) {
 	var checkNode func(alist.VertexDescriptor) error
 	checkNode = func(v alist.VertexDescriptor) error {
@@ -138,6 +148,11 @@ func (B *Builder) computeWhatNeedsToBeRebuilt() (bool, error) {
 			checkNode(target)
 		}
 		if B.filesGraph.IsLeef(v) {
+			return nil
+		}
+
+		if B.alwaysBuild && B.isBuildableNode(v) {
+			B.filesGraph.GetVertexAttribute(v).needsToBeRebuilt = true
 			return nil
 		}
 

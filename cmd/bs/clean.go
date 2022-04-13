@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gueckmooh/argparse"
+	"github.com/gueckmooh/bs/pkg/argparse"
 	"github.com/gueckmooh/bs/pkg/fsutil"
 	"github.com/gueckmooh/bs/pkg/project"
 	projectutils "github.com/gueckmooh/bs/pkg/project_utils"
