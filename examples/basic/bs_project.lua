@@ -12,3 +12,6 @@ project:DefaultTarget "hello_exe"
 
 project.CPP:Dialect "CPP20"
 project.CPP:AddBuildOptions {"-Wall", "-Werror"}
+
+debugProfile = project:Profile "Debug"
+debugProfile.CPP:AddBuildOptions "-O0"
