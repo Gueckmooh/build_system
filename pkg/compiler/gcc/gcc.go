@@ -37,13 +37,14 @@ const (
 )
 
 type GCC struct {
-	gpp        bool
-	debugLevel DebugLevel
-	includes   []string
-	libDirs    []string
-	libs       []string
-	targetKind TargetKind
-	dialect    int8
+	gpp          bool
+	debugLevel   DebugLevel
+	includes     []string
+	libDirs      []string
+	libs         []string
+	targetKind   TargetKind
+	dialect      int8
+	buildOptions []string
 }
 
 type GCCOption func(*GCC)
@@ -73,6 +74,12 @@ func WithLib(lib string) GCCOption {
 func WithDialect(dialect int8) GCCOption {
 	return func(g *GCC) {
 		g.dialect = dialect
+	}
+}
+
+func WithBuildOption(s string) GCCOption {
+	return func(g *GCC) {
+		g.buildOptions = append(g.buildOptions, s)
 	}
 }
 
@@ -112,6 +119,10 @@ func (gcc *GCC) CompileFile(target, source string) error {
 	dialectopt := gcc.getDialectOption()
 	if dialectopt != "" {
 		cmd = append(cmd, dialectopt)
+	}
+
+	for _, v := range gcc.buildOptions {
+		cmd = append(cmd, v)
 	}
 
 	includesOpts := functional.ListMap(gcc.includes,

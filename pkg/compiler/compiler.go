@@ -23,6 +23,7 @@ type compilerOption struct {
 	forCPP             bool
 	targetKind         int8
 	cppDialect         int8
+	buildOptions       []string
 }
 
 type CompilerOption func(*compilerOption)
@@ -63,6 +64,12 @@ func WithCPPDIalect(dialect int8) CompilerOption {
 	}
 }
 
+func WithBuildOption(s string) CompilerOption {
+	return func(co *compilerOption) {
+		co.buildOptions = append(co.buildOptions, s)
+	}
+}
+
 func NewCompiler(opts ...CompilerOption) Compiler {
 	options := &compilerOption{
 		forCPP:     false,
@@ -91,6 +98,9 @@ func (co *compilerOption) newGCCCompiler() Compiler {
 	}
 	if co.cppDialect != project.DialectCPPUnknown {
 		opts = append(opts, gcc.WithDialect(co.cppDialect))
+	}
+	for _, v := range co.buildOptions {
+		opts = append(opts, gcc.WithBuildOption(v))
 	}
 	return gcc.NewGPP(opts...)
 }

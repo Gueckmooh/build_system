@@ -31,7 +31,8 @@ const (
 )
 
 type CPPProfile struct {
-	Dialect int8
+	Dialect      int8
+	BuildOptions []string
 }
 
 func NewCPPProfile() *CPPProfile {

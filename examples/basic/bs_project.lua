@@ -11,3 +11,4 @@ project:AddSources "sources/"
 project:DefaultTarget "hello_exe"
 
 project.CPP:Dialect "CPP20"
+project.CPP:AddBuildOptions {"-Wall", "-Werror"}

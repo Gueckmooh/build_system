@@ -48,6 +48,29 @@ func newTablePusher(field string) lua.LGFunction {
 	}
 }
 
+func newTableAppened(field string) lua.LGFunction {
+	return func(L *lua.LState) int {
+		self := L.ToTable(1)
+		value := L.Get(2)
+		vtable := L.GetField(self, field)
+		var ttable *lua.LTable
+		if vtable.Type() != lua.LTTable {
+			ttable = L.NewTable()
+			L.SetField(self, field, ttable)
+		} else {
+			ttable = vtable.(*lua.LTable)
+		}
+		if value.Type() == lua.LTTable {
+			L.ForEach(value.(*lua.LTable), func(_ lua.LValue, v lua.LValue) {
+				ttable.Append(v)
+			})
+		} else {
+			ttable.Append(value)
+		}
+		return 0
+	}
+}
+
 func luaSTableToSTable(T *lua.LTable) []string {
 	var list []string
 	T.ForEach(func(_, v lua.LValue) {
@@ -76,6 +99,15 @@ func luaGetStringInTable(L *lua.LState, T *lua.LTable, field, desc string) (stri
 			desc, vfield.Type().String())
 	}
 	return vfield.(lua.LString).String(), nil
+}
+
+func luaGetTableInTable(L *lua.LState, T *lua.LTable, field, desc string) (*lua.LTable, error) {
+	vfield := L.GetField(T, field)
+	if vfield.Type() != lua.LTTable {
+		return nil, fmt.Errorf("Error while getting %s, unexpected type %s",
+			desc, vfield.Type().String())
+	}
+	return vfield.(*lua.LTable), nil
 }
 
 func luaMaybeGetStringInTable(L *lua.LState, T *lua.LTable, field, desc string) (*string, error) {
