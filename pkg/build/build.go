@@ -126,6 +126,9 @@ func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, e
 		opts = append(opts, o...)
 	}
 	opts = append(opts, compiler.WithCPPDIalect(B.Project.DefaultProfile.GetCPPProfile().Dialect))
+	for _, v := range B.Project.DefaultProfile.GetCPPProfile().BuildOptions {
+		opts = append(opts, compiler.WithBuildOption(v))
+	}
 	return opts, nil
 }
 
