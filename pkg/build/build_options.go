@@ -9,3 +9,9 @@ type BuildOption func(b *Builder)
 func WithAlwaysBuild(b *Builder) {
 	b.alwaysBuild = true
 }
+
+func WithProfile(s string) BuildOption {
+	return func(b *Builder) {
+		b.profile = s
+	}
+}

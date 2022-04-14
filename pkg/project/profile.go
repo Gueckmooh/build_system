@@ -25,6 +25,28 @@ func (p *Profile) NewSubProfile(name string) *Profile {
 	return np
 }
 
+func (p *Profile) Clone() *Profile {
+	np := &Profile{
+		Name:          p.Name,
+		cppProfile:    p.cppProfile.Clone(),
+		parentProfile: p.parentProfile,
+		subProfiles:   p.subProfiles,
+	}
+	return np
+}
+
+func (p *Profile) Merge(op *Profile) *Profile {
+	np := p.Clone()
+	np.Name = op.Name
+	np.cppProfile = np.cppProfile.Merge(op.cppProfile)
+	return np
+}
+
+func (p *Profile) AddSubProfile(sp *Profile) {
+	p.subProfiles = append(p.subProfiles, sp)
+	sp.parentProfile = p
+}
+
 func (p *Profile) SetCPPProfile(cp *CPPProfile) {
 	p.cppProfile = cp
 }
@@ -32,4 +54,8 @@ func (p *Profile) SetCPPProfile(cp *CPPProfile) {
 func (p *Profile) GetCPPProfile() (cp *CPPProfile) {
 	cp = p.cppProfile
 	return
+}
+
+func (p *Profile) GetSubProfiles() []*Profile {
+	return p.subProfiles
 }

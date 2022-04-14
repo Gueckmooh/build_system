@@ -47,6 +47,7 @@ type Builder struct {
 	targetVertex     alist.VertexDescriptor
 	filesVertices    map[string]alist.VertexDescriptor
 	alwaysBuild      bool
+	profile          string
 }
 
 func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, error) {
@@ -63,6 +64,7 @@ func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, 
 		filesGraph:       alist.NewGraph[FileDesc, alist.AttributeNone](alist.DirectedGraph),
 		filesVertices:    make(map[string]alist.VertexDescriptor),
 		alwaysBuild:      false,
+		profile:          "Default",
 	}
 	for _, opt := range opts {
 		opt(builder)
@@ -125,8 +127,14 @@ func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, e
 	} else {
 		opts = append(opts, o...)
 	}
-	opts = append(opts, compiler.WithCPPDIalect(B.Project.DefaultProfile.GetCPPProfile().Dialect))
-	for _, v := range B.Project.DefaultProfile.GetCPPProfile().BuildOptions {
+
+	profile, err := B.Project.ComputeProfile(B.profile)
+	if err != nil {
+		return nil, err
+	}
+
+	opts = append(opts, compiler.WithCPPDIalect(profile.GetCPPProfile().Dialect))
+	for _, v := range profile.GetCPPProfile().BuildOptions {
 		opts = append(opts, compiler.WithBuildOption(v))
 	}
 	return opts, nil

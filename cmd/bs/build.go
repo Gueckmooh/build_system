@@ -22,6 +22,7 @@ type BuildOptions struct {
 	buildUpstream *bool
 	directory     *string
 	alwaysBuild   *bool
+	profile       *string
 }
 
 func (opts *BuildOptions) init(parser *argparse.Parser) {
@@ -56,6 +57,10 @@ func (opts *BuildOptions) init(parser *argparse.Parser) {
 	opts.alwaysBuild = opts.command.Flag("B", "always-build", &argparse.Options{
 		Required: false,
 		Help:     "Unconditionally build all targets.",
+	})
+	opts.profile = opts.command.String("P", "profile", &argparse.Options{
+		Required: false,
+		Help:     "Use selected profile for build.",
 	})
 }
 
@@ -109,6 +114,10 @@ func tryBuildMain(opts Options) error {
 
 	fmt.Printf("profile: %#v\n", proj.DefaultProfile)
 	fmt.Printf("cppprofile: %#v\n", proj.DefaultProfile.GetCPPProfile())
+	for _, sp := range proj.DefaultProfile.GetSubProfiles() {
+		fmt.Printf("profile: %#v\n", sp)
+		fmt.Printf("cppprofile: %#v\n", sp.GetCPPProfile())
+	}
 
 	err = proj.ComputeComponentDependencies()
 	if err != nil {
@@ -145,6 +154,9 @@ func tryBuildMain(opts Options) error {
 	var bops []build.BuildOption
 	if *opts.buildOptions.alwaysBuild {
 		bops = append(bops, build.WithAlwaysBuild)
+	}
+	if *opts.buildOptions.profile != "" {
+		bops = append(bops, build.WithProfile(*opts.buildOptions.profile))
 	}
 
 	if *opts.buildOptions.buildUpstream {

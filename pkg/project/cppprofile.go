@@ -41,6 +41,20 @@ func NewCPPProfile() *CPPProfile {
 	}
 }
 
+func (p *CPPProfile) Clone() *CPPProfile {
+	np := &CPPProfile{
+		Dialect:      p.Dialect,
+		BuildOptions: p.BuildOptions,
+	}
+	return np
+}
+
+func (p *CPPProfile) Merge(op *CPPProfile) (np *CPPProfile) {
+	np = p.Clone()
+	np.BuildOptions = append(np.BuildOptions, op.BuildOptions...)
+	return np
+}
+
 func (p *CPPProfile) SetDialectFromString(s string) error {
 	p.Dialect = cppDialectFromString(s)
 	if p.Dialect == DialectCPPUnknown {

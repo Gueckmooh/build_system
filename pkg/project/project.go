@@ -2,7 +2,6 @@ package project
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 
 	alist "github.com/gueckmooh/bs/pkg/adjacency_list"
@@ -25,7 +24,7 @@ type Project struct {
 	Config         *Config
 	DefaultTarget  string
 	ComponentDeps  *ComponentDependencyGraph
-	Profiles       []*Profile
+	Profiles       map[string]*Profile
 	DefaultProfile *Profile
 }
 
@@ -58,10 +57,10 @@ func (p *Project) ComputeComponentDependencies() error {
 		}
 	}
 
-	vertexWritterOption := alist.WithVertexLabelWritter[Component, alist.AttributeNone](func(s *Component) string {
-		return fmt.Sprintf(`[label="%s"]`, s.Name)
-	})
-	ioutil.WriteFile("/tmp/graphviz.dot", []byte(g.DumpGraphviz(vertexWritterOption)), 0o600)
+	// vertexWritterOption := alist.WithVertexLabelWritter[Component, alist.AttributeNone](func(s *Component) string {
+	// 	return fmt.Sprintf(`[label="%s"]`, s.Name)
+	// })
+	// ioutil.WriteFile("/tmp/graphviz.dot", []byte(g.DumpGraphviz(vertexWritterOption)), 0o600)
 	p.ComponentDeps = &ComponentDependencyGraph{
 		G:    g,
 		Vmap: vmap,
@@ -109,4 +108,21 @@ func (p *Project) GetComponentFiles(root string) ([]string, error) {
 			return filepath.Base(p) == ComponentConfigFile
 		})
 	return files, nil
+}
+
+func (p *Project) ComputeProfile(name string) (*Profile, error) {
+	profileToMerge, ok := p.Profiles[name]
+	if !ok {
+		return nil, fmt.Errorf("Could not find profile '%s'", name)
+	}
+	var processProfile func(p *Profile) *Profile
+	processProfile = func(p *Profile) *Profile {
+		if p.parentProfile == nil {
+			return p.Clone()
+		} else {
+			pp := processProfile(p.parentProfile)
+			return pp.Merge(p)
+		}
+	}
+	return processProfile(profileToMerge), nil
 }
