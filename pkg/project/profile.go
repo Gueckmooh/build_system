@@ -7,6 +7,7 @@ type Profile struct {
 
 	subProfiles   []*Profile
 	parentProfile *Profile
+	Sources       []FilesPattern
 }
 
 func NewProfile(name string) *Profile {
@@ -31,6 +32,7 @@ func (p *Profile) Clone() *Profile {
 		cppProfile:    p.cppProfile.Clone(),
 		parentProfile: p.parentProfile,
 		subProfiles:   p.subProfiles,
+		Sources:       p.Sources,
 	}
 	return np
 }
@@ -39,6 +41,7 @@ func (p *Profile) Merge(op *Profile) *Profile {
 	np := p.Clone()
 	np.Name = op.Name
 	np.cppProfile = np.cppProfile.Merge(op.cppProfile)
+	np.Sources = append(np.Sources, op.Sources...)
 	return np
 }
 

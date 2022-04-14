@@ -56,3 +56,21 @@ func (c *Component) ComputeProfile(name string) *Profile {
 	}
 	return processProfile(profileToMerge)
 }
+
+func (c *Component) GetSourcesForProfile(name string) []FilesPattern {
+	profileToMerge, ok := c.Profiles[name]
+	if !ok {
+		profileToMerge = c.BaseProfile
+	}
+	var processProfile func(p *Profile) *Profile
+	processProfile = func(p *Profile) *Profile {
+		if p.parentProfile == nil {
+			return p.Clone()
+		} else {
+			pp := processProfile(p.parentProfile)
+			return pp.Merge(p)
+		}
+	}
+	mergedProfile := processProfile(profileToMerge)
+	return append(c.Sources, mergedProfile.Sources...)
+}
