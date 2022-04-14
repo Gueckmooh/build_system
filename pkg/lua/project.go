@@ -9,15 +9,16 @@ import (
 )
 
 var projectFunctions = map[string]lua.LGFunction{
-	"Name":          newSetter("_name_"),
-	"Version":       newSetter("_version_"),
-	"Languages":     newTableSetter("_languages_"),
-	"AddSources":    newTablePusher("_sources_"),
-	"DefaultTarget": newSetter("_default_target_"),
-	"Profile":       luaGeOrCreatetProfile,
+	"Name":           newSetter("_name_"),
+	"Version":        newSetter("_version_"),
+	"Languages":      newTableSetter("_languages_"),
+	"AddSources":     newTablePusher("_sources_"),
+	"DefaultTarget":  newSetter("_default_target_"),
+	"Profile":        luaGetOrCreatetProfile,
+	"DefaultProfile": newSetter("_default_profile_"),
 }
 
-func luaGeOrCreatetProfile(L *lua.LState) int {
+func luaGetOrCreatetProfile(L *lua.LState) int {
 	self := L.ToTable(1)
 	name := L.ToString(2)
 	vprofiles := L.GetField(self, "_profiles_")
@@ -49,11 +50,12 @@ func ProjectLoader(L *lua.LState) int {
 	L.SetField(mod, "_default_target_", lua.LNil)
 
 	profile, profileMap := NewProfile(L, "Default")
-	L.SetField(mod, "_default_profile_", profile)
+	L.SetField(mod, "_base_profile_", profile)
 	for k, v := range profileMap {
 		L.SetField(mod, k, v)
 	}
 	L.SetField(mod, "_profiles_", L.NewTable())
+	L.SetField(mod, "_default_profile_", lua.LNil)
 
 	L.Push(mod)
 	return 1
@@ -107,18 +109,18 @@ func ReadProjectFromLuaState(L *lua.LState) (*project.Project, error) {
 	sources := functional.ListMap(luaSTableToSTable(vsources.(*lua.LTable)),
 		func(s string) project.DirectoryPattern { return project.DirectoryPattern(s) })
 
-	vdefaultProfile := L.GetField(tproj, "_default_profile_")
-	if vdefaultProfile.Type() != lua.LTTable {
+	vbaseProfile := L.GetField(tproj, "_base_profile_")
+	if vbaseProfile.Type() != lua.LTTable {
 		return nil, fmt.Errorf("Error while getting project default profile, unexpected type %s",
-			vdefaultProfile.Type().String())
+			vbaseProfile.Type().String())
 	}
-	defaultProfile, err := ReadProfileFromLuaTable(L, vdefaultProfile.(*lua.LTable))
+	baseProfile, err := ReadProfileFromLuaTable(L, vbaseProfile.(*lua.LTable))
 	if err != nil {
 		return nil, err
 	}
 
 	profiles := make(map[string]*project.Profile)
-	profiles[defaultProfile.Name] = defaultProfile
+	profiles[baseProfile.Name] = baseProfile
 	{
 		vprofiles := L.GetField(tproj, "_profiles_")
 		if vprofiles.Type() != lua.LTTable {
@@ -136,8 +138,17 @@ func ReadProjectFromLuaState(L *lua.LState) (*project.Project, error) {
 		})
 		for _, profile := range subProfiles {
 			profiles[profile.Name] = profile
-			defaultProfile.AddSubProfile(profile)
+			baseProfile.AddSubProfile(profile)
 		}
+	}
+
+	maybeDefaultProfile, err := luaMaybeGetStringInTable(L, tproj, "_default_profile_", "default profile")
+	if err != nil {
+		return nil, err
+	}
+	defaultProfile := ""
+	if maybeDefaultProfile != nil {
+		defaultProfile = *maybeDefaultProfile
 	}
 
 	proj := &project.Project{
@@ -146,8 +157,9 @@ func ReadProjectFromLuaState(L *lua.LState) (*project.Project, error) {
 		Languages:      languages,
 		Sources:        sources,
 		DefaultTarget:  defaultTarget,
-		DefaultProfile: defaultProfile,
+		BaseProfile:    baseProfile,
 		Profiles:       profiles,
+		DefaultProfile: defaultProfile,
 	}
 
 	return proj, nil

@@ -36,6 +36,7 @@ var (
 		"AddSources":      newTablePusher("_sources_"),
 		"ExportedHeaders": newTableSetter("_exported_headers_"),
 		"Requires":        newTableSetter("_requires_"),
+		"Profile":         luaGetOrCreatetProfile,
 	}
 )
 
@@ -58,6 +59,13 @@ func NewComponent(L *lua.LState, name string) *lua.LTable {
 	L.SetField(table, "_path_", lua.LString(filepath.Dir(currentComponentFile)))
 	L.SetField(table, "_exported_headers_", lua.LNil)
 	L.SetField(table, "_requires_", lua.LNil)
+
+	profile, profileMap := NewProfile(L, "Default")
+	L.SetField(table, "_base_profile_", profile)
+	for k, v := range profileMap {
+		L.SetField(table, k, v)
+	}
+	L.SetField(table, "_profiles_", L.NewTable())
 
 	return table
 }
@@ -120,6 +128,39 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 		requires = luaSTableToSTable(vrequires.(*lua.LTable))
 	}
 
+	vbaseProfile := L.GetField(T, "_base_profile_")
+	if vbaseProfile.Type() != lua.LTTable {
+		return nil, fmt.Errorf("Error while getting project default profile, unexpected type %s",
+			vbaseProfile.Type().String())
+	}
+	baseProfile, err := ReadProfileFromLuaTable(L, vbaseProfile.(*lua.LTable))
+	if err != nil {
+		return nil, err
+	}
+
+	profiles := make(map[string]*project.Profile)
+	profiles[baseProfile.Name] = baseProfile
+	{
+		vprofiles := L.GetField(T, "_profiles_")
+		if vprofiles.Type() != lua.LTTable {
+			return nil, fmt.Errorf("Error while getting project profiles, unexpected type %s",
+				vprofiles.Type().String())
+		}
+		var subProfiles []*project.Profile
+		L.ForEach(vprofiles.(*lua.LTable), func(_ lua.LValue, vt lua.LValue) {
+			if vt.Type() == lua.LTTable {
+				profile, err := ReadProfileFromLuaTable(L, vt.(*lua.LTable))
+				if err == nil {
+					subProfiles = append(subProfiles, profile)
+				}
+			}
+		})
+		for _, profile := range subProfiles {
+			profiles[profile.Name] = profile
+			baseProfile.AddSubProfile(profile)
+		}
+	}
+
 	proj := &project.Component{
 		Name:            name,
 		Languages:       languages,
@@ -128,6 +169,8 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 		Path:            path,
 		ExportedHeaders: exported_headers,
 		Requires:        requires,
+		BaseProfile:     baseProfile,
+		Profiles:        profiles,
 	}
 
 	return proj, nil

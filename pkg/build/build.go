@@ -128,10 +128,13 @@ func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, e
 		opts = append(opts, o...)
 	}
 
-	profile, err := B.Project.ComputeProfile(B.profile)
+	projectProfile, err := B.Project.ComputeProfile(B.profile)
 	if err != nil {
 		return nil, err
 	}
+	componentProfile := B.component.ComputeProfile(B.profile)
+
+	profile := projectProfile.Merge(componentProfile)
 
 	opts = append(opts, compiler.WithCPPDIalect(profile.GetCPPProfile().Dialect))
 	for _, v := range profile.GetCPPProfile().BuildOptions {
