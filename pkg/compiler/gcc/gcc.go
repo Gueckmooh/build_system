@@ -179,7 +179,7 @@ func (gcc *GCC) LinkFiles(target string, sources ...string) error {
 
 	cmd = append(cmd, []string{"-o", target}...)
 
-	fmt.Printf("Linking %s\n", target)
+	fmt.Printf("Linking %s%s%s\n", colors.StyleBold, target, colors.StyleReset)
 	_, errs, err := runCommand(cmd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", errs)

@@ -23,6 +23,7 @@ type BuildOptions struct {
 	directory     *string
 	alwaysBuild   *bool
 	profile       *string
+	platform      *string
 }
 
 func (opts *BuildOptions) init(parser *argparse.Parser) {
@@ -58,9 +59,13 @@ func (opts *BuildOptions) init(parser *argparse.Parser) {
 		Required: false,
 		Help:     "Unconditionally build all targets.",
 	})
-	opts.profile = opts.command.String("P", "profile", &argparse.Options{
+	opts.profile = opts.command.String("p", "profile", &argparse.Options{
 		Required: false,
 		Help:     "Use selected profile for build.",
+	})
+	opts.platform = opts.command.String("P", "platform", &argparse.Options{
+		Required: false,
+		Help:     "Use selected platform for build.",
 	})
 }
 
@@ -112,13 +117,6 @@ func tryBuildMain(opts Options) error {
 		return err
 	}
 
-	fmt.Printf("profile: %#v\n", proj.BaseProfile)
-	fmt.Printf("cppprofile: %#v\n", proj.BaseProfile.GetCPPProfile())
-	for _, sp := range proj.BaseProfile.GetSubProfiles() {
-		fmt.Printf("profile: %#v\n", sp)
-		fmt.Printf("cppprofile: %#v\n", sp.GetCPPProfile())
-	}
-
 	err = proj.ComputeComponentDependencies()
 	if err != nil {
 		return err
@@ -155,11 +153,25 @@ func tryBuildMain(opts Options) error {
 	if *opts.buildOptions.alwaysBuild {
 		bops = append(bops, build.WithAlwaysBuild)
 	}
+	profilestr := "unspecified"
+	platformstr := "unspecified"
 	if *opts.buildOptions.profile != "" {
 		bops = append(bops, build.WithProfile(*opts.buildOptions.profile))
+		profilestr = *opts.buildOptions.profile
 	} else if proj.DefaultProfile != "" {
 		bops = append(bops, build.WithProfile(proj.DefaultProfile))
+		profilestr = proj.DefaultProfile
 	}
+	if *opts.buildOptions.platform != "" {
+		bops = append(bops, build.WithPlatform(*opts.buildOptions.platform))
+		platformstr = *opts.buildOptions.platform
+	} else if proj.DefaultPlatform != "" {
+		bops = append(bops, build.WithPlatform(proj.DefaultPlatform))
+		platformstr = proj.DefaultPlatform
+	}
+
+	log.Log.Printf("%sInfo:%s build configured for %s profile, %s platform...\n",
+		colors.ColorCyan, colors.ColorReset, profilestr, platformstr)
 
 	if *opts.buildOptions.buildUpstream {
 		err = BuildUpstream(proj, ctbs[0], bops)

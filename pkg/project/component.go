@@ -20,6 +20,7 @@ type Component struct {
 	Requires        []string
 	Profiles        map[string]*Profile
 	BaseProfile     *Profile
+	Platforms       map[string]*Profile
 }
 
 func ComponentTypeFromString(compTy string) ComponentType {
@@ -57,10 +58,47 @@ func (c *Component) ComputeProfile(name string) *Profile {
 	return processProfile(profileToMerge)
 }
 
+// @todo simplify this
+func (c *Component) ComputePlatform(name string) *Profile {
+	profileToMerge, ok := c.Platforms[name]
+	if !ok {
+		return DummyProfile("Default")
+	}
+	var processProfile func(p *Profile) *Profile
+	processProfile = func(p *Profile) *Profile {
+		if p.parentProfile == nil {
+			return p.Clone()
+		} else {
+			pp := processProfile(p.parentProfile)
+			return pp.Merge(p)
+		}
+	}
+	return processProfile(profileToMerge)
+}
+
 func (c *Component) GetSourcesForProfile(name string) []FilesPattern {
 	profileToMerge, ok := c.Profiles[name]
 	if !ok {
 		profileToMerge = c.BaseProfile
+	}
+	var processProfile func(p *Profile) *Profile
+	processProfile = func(p *Profile) *Profile {
+		if p.parentProfile == nil {
+			return p.Clone()
+		} else {
+			pp := processProfile(p.parentProfile)
+			return pp.Merge(p)
+		}
+	}
+	mergedProfile := processProfile(profileToMerge)
+	return append(c.Sources, mergedProfile.Sources...)
+}
+
+// @todo simplify this
+func (c *Component) GetSourcesForPlatform(name string) []FilesPattern {
+	profileToMerge, ok := c.Platforms[name]
+	if !ok {
+		return c.Sources
 	}
 	var processProfile func(p *Profile) *Profile
 	processProfile = func(p *Profile) *Profile {
