@@ -36,7 +36,8 @@ var (
 		"AddSources":      newTablePusher("_sources_"),
 		"ExportedHeaders": newTableSetter("_exported_headers_"),
 		"Requires":        newTableSetter("_requires_"),
-		"Profile":         luaGetOrCreatetProfile,
+		"Profile":         luaGetOrCreateProfile,
+		"Platform":        luaGetOrCreatePlatform,
 	}
 )
 
@@ -66,6 +67,7 @@ func NewComponent(L *lua.LState, name string) *lua.LTable {
 		L.SetField(table, k, v)
 	}
 	L.SetField(table, "_profiles_", L.NewTable())
+	L.SetField(table, "_platforms_", L.NewTable())
 
 	return table
 }
@@ -161,6 +163,23 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 		}
 	}
 
+	platforms := make(map[string]*project.Profile)
+	{
+		vplatforms := L.GetField(T, "_platforms_")
+		if vplatforms.Type() != lua.LTTable {
+			return nil, fmt.Errorf("Error while getting project platforms, unexpected type %s",
+				vplatforms.Type().String())
+		}
+		L.ForEach(vplatforms.(*lua.LTable), func(_ lua.LValue, vt lua.LValue) {
+			if vt.Type() == lua.LTTable {
+				profile, err := ReadProfileFromLuaTable(L, vt.(*lua.LTable))
+				if err == nil {
+					platforms[profile.Name] = profile
+				}
+			}
+		})
+	}
+
 	proj := &project.Component{
 		Name:            name,
 		Languages:       languages,
@@ -171,6 +190,7 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 		Requires:        requires,
 		BaseProfile:     baseProfile,
 		Profiles:        profiles,
+		Platforms:       platforms,
 	}
 
 	return proj, nil

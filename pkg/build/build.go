@@ -48,6 +48,7 @@ type Builder struct {
 	filesVertices    map[string]alist.VertexDescriptor
 	alwaysBuild      bool
 	profile          string
+	platform         string
 }
 
 func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, error) {
@@ -134,7 +135,14 @@ func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, e
 	}
 	componentProfile := B.component.ComputeProfile(B.profile)
 
-	profile := projectProfile.Merge(componentProfile)
+	projectPlatform, err := B.Project.ComputePlatform(B.platform)
+	if err != nil {
+		return nil, err
+	}
+	componentPlatform := B.component.ComputePlatform(B.platform)
+	platform := projectPlatform.Merge(componentPlatform)
+
+	profile := projectProfile.Merge(componentProfile).Merge(platform)
 
 	opts = append(opts, compiler.WithCPPDIalect(profile.GetCPPProfile().Dialect))
 	for _, v := range profile.GetCPPProfile().BuildOptions {

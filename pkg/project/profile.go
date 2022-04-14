@@ -19,6 +19,15 @@ func NewProfile(name string) *Profile {
 	}
 }
 
+func DummyProfile(name string) *Profile {
+	return &Profile{
+		Name:          name,
+		cppProfile:    NewCPPProfile(),
+		subProfiles:   []*Profile{},
+		parentProfile: nil,
+	}
+}
+
 func (p *Profile) NewSubProfile(name string) *Profile {
 	np := NewProfile(name)
 	np.parentProfile = p

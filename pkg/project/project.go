@@ -16,17 +16,19 @@ const (
 )
 
 type Project struct {
-	Name           string
-	Version        string
-	Languages      []LanguageID
-	Sources        []DirectoryPattern
-	Components     []*Component
-	Config         *Config
-	DefaultTarget  string
-	ComponentDeps  *ComponentDependencyGraph
-	Profiles       map[string]*Profile
-	BaseProfile    *Profile
-	DefaultProfile string
+	Name            string
+	Version         string
+	Languages       []LanguageID
+	Sources         []DirectoryPattern
+	Components      []*Component
+	Config          *Config
+	DefaultTarget   string
+	ComponentDeps   *ComponentDependencyGraph
+	Profiles        map[string]*Profile
+	BaseProfile     *Profile
+	DefaultProfile  string
+	Platforms       map[string]*Profile
+	DefaultPlatform string
 }
 
 type ComponentDependencyGraph struct {
@@ -113,6 +115,26 @@ func (p *Project) GetComponentFiles(root string) ([]string, error) {
 
 func (p *Project) ComputeProfile(name string) (*Profile, error) {
 	profileToMerge, ok := p.Profiles[name]
+	if !ok {
+		return nil, fmt.Errorf("Could not find profile '%s'", name)
+	}
+	var processProfile func(p *Profile) *Profile
+	processProfile = func(p *Profile) *Profile {
+		if p.parentProfile == nil {
+			return p.Clone()
+		} else {
+			pp := processProfile(p.parentProfile)
+			return pp.Merge(p)
+		}
+	}
+	return processProfile(profileToMerge), nil
+}
+
+func (p *Project) ComputePlatform(name string) (*Profile, error) {
+	if name == "" {
+		return DummyProfile("Default"), nil
+	}
+	profileToMerge, ok := p.Platforms[name]
 	if !ok {
 		return nil, fmt.Errorf("Could not find profile '%s'", name)
 	}

@@ -15,3 +15,9 @@ func WithProfile(s string) BuildOption {
 		b.profile = s
 	}
 }
+
+func WithPlatform(s string) BuildOption {
+	return func(b *Builder) {
+		b.platform = s
+	}
+}
