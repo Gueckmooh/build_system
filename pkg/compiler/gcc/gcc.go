@@ -11,6 +11,7 @@ import (
 	"github.com/gueckmooh/bs/pkg/common/colors"
 	"github.com/gueckmooh/bs/pkg/functional"
 	log "github.com/gueckmooh/bs/pkg/logging"
+	"github.com/gueckmooh/bs/pkg/project"
 )
 
 type DebugLevel int8
@@ -42,6 +43,7 @@ type GCC struct {
 	libDirs    []string
 	libs       []string
 	targetKind TargetKind
+	dialect    int8
 }
 
 type GCCOption func(*GCC)
@@ -68,12 +70,19 @@ func WithLib(lib string) GCCOption {
 	}
 }
 
+func WithDialect(dialect int8) GCCOption {
+	return func(g *GCC) {
+		g.dialect = dialect
+	}
+}
+
 func NewGPP(opts ...GCCOption) *GCC {
 	gcc := &GCC{
 		gpp:        true,
 		debugLevel: DebugLevelO0,
 		includes:   []string{},
 		targetKind: targetExe,
+		dialect:    project.DialectCPPUnknown,
 	}
 	for _, opt := range opts {
 		opt(gcc)
@@ -98,6 +107,11 @@ func (gcc *GCC) CompileFile(target, source string) error {
 		cmd = append(cmd, GPPExec)
 	} else {
 		cmd = append(cmd, GCCExec)
+	}
+
+	dialectopt := gcc.getDialectOption()
+	if dialectopt != "" {
+		cmd = append(cmd, dialectopt)
 	}
 
 	includesOpts := functional.ListMap(gcc.includes,
@@ -204,4 +218,60 @@ func ParseMOutput(o string) (string, []string, error) {
 		return s != ""
 	})
 	return target, sources, nil
+}
+
+func (g *GCC) getDialectOption() string {
+	if g.gpp {
+		switch g.dialect {
+		case project.DialectCPP98:
+			return "-std=c++98"
+		case project.DialectCPP03:
+			return "-std=c++03"
+		case project.DialectCPP11:
+			return "-std=c++11"
+		case project.DialectCPP0x:
+			return "-std=c++0x"
+		case project.DialectCPP14:
+			return "-std=c++14"
+		case project.DialectCPP1y:
+			return "-std=c++1y"
+		case project.DialectCPP17:
+			return "-std=c++17"
+		case project.DialectCPP1z:
+			return "-std=c++1z"
+		case project.DialectCPP20:
+			return "-std=c++20"
+		case project.DialectCPP2a:
+			return "-std=c++2a"
+		case project.DialectCPP23:
+			return "-std=c++23"
+		case project.DialectCPP2b:
+			return "-std=c++2b"
+		case project.DialectCPPGNU98:
+			return "-std=gnu++98"
+		case project.DialectCPPGNU03:
+			return "-std=gnu++03"
+		case project.DialectCPPGNU11:
+			return "-std=gnu++11"
+		case project.DialectCPPGNU0x:
+			return "-std=gnu++0x"
+		case project.DialectCPPGNU14:
+			return "-std=gnu++14"
+		case project.DialectCPPGNU1y:
+			return "-std=gnu++1y"
+		case project.DialectCPPGNU17:
+			return "-std=gnu++17"
+		case project.DialectCPPGNU1z:
+			return "-std=gnu++1z"
+		case project.DialectCPPGNU20:
+			return "-std=gnu++20"
+		case project.DialectCPPGNU2a:
+			return "-std=gnu++2a"
+		case project.DialectCPPGNU23:
+			return "-std=gnu++23"
+		case project.DialectCPPGNU2b:
+			return "-std=gnu++2b"
+		}
+	}
+	return ""
 }

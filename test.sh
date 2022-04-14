@@ -12,4 +12,6 @@ bs clean
 popd >/dev/null
 
 bs build --build-upstream -C "$EX" --verbose
+
+echo -e "\nRunning..."
 "$EX"/.build/bin/hello_exe

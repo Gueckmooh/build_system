@@ -1,6 +1,9 @@
 package compiler
 
-import "github.com/gueckmooh/bs/pkg/compiler/gcc"
+import (
+	"github.com/gueckmooh/bs/pkg/compiler/gcc"
+	"github.com/gueckmooh/bs/pkg/project"
+)
 
 type Compiler interface {
 	CompileFile(target, source string) error
@@ -19,6 +22,7 @@ type compilerOption struct {
 	libraries          []string
 	forCPP             bool
 	targetKind         int8
+	cppDialect         int8
 }
 
 type CompilerOption func(*compilerOption)
@@ -53,9 +57,16 @@ func TargetExe(co *compilerOption) {
 	co.targetKind = targetExe
 }
 
+func WithCPPDIalect(dialect int8) CompilerOption {
+	return func(co *compilerOption) {
+		co.cppDialect = dialect
+	}
+}
+
 func NewCompiler(opts ...CompilerOption) Compiler {
 	options := &compilerOption{
-		forCPP: false,
+		forCPP:     false,
+		cppDialect: project.DialectCPPUnknown,
 	}
 	for _, opt := range opts {
 		opt(options)
@@ -77,6 +88,9 @@ func (co *compilerOption) newGCCCompiler() Compiler {
 	switch co.targetKind {
 	case targetLib:
 		opts = append(opts, gcc.TargetLib)
+	}
+	if co.cppDialect != project.DialectCPPUnknown {
+		opts = append(opts, gcc.WithDialect(co.cppDialect))
 	}
 	return gcc.NewGPP(opts...)
 }
