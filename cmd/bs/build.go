@@ -112,9 +112,9 @@ func tryBuildMain(opts Options) error {
 		return err
 	}
 
-	fmt.Printf("profile: %#v\n", proj.DefaultProfile)
-	fmt.Printf("cppprofile: %#v\n", proj.DefaultProfile.GetCPPProfile())
-	for _, sp := range proj.DefaultProfile.GetSubProfiles() {
+	fmt.Printf("profile: %#v\n", proj.BaseProfile)
+	fmt.Printf("cppprofile: %#v\n", proj.BaseProfile.GetCPPProfile())
+	for _, sp := range proj.BaseProfile.GetSubProfiles() {
 		fmt.Printf("profile: %#v\n", sp)
 		fmt.Printf("cppprofile: %#v\n", sp.GetCPPProfile())
 	}
@@ -157,6 +157,8 @@ func tryBuildMain(opts Options) error {
 	}
 	if *opts.buildOptions.profile != "" {
 		bops = append(bops, build.WithProfile(*opts.buildOptions.profile))
+	} else if proj.DefaultProfile != "" {
+		bops = append(bops, build.WithProfile(proj.DefaultProfile))
 	}
 
 	if *opts.buildOptions.buildUpstream {

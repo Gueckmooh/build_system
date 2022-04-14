@@ -25,7 +25,8 @@ type Project struct {
 	DefaultTarget  string
 	ComponentDeps  *ComponentDependencyGraph
 	Profiles       map[string]*Profile
-	DefaultProfile *Profile
+	BaseProfile    *Profile
+	DefaultProfile string
 }
 
 type ComponentDependencyGraph struct {

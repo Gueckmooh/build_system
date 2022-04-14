@@ -18,6 +18,8 @@ type Component struct {
 	Path            string
 	ExportedHeaders map[string]string
 	Requires        []string
+	Profiles        map[string]*Profile
+	BaseProfile     *Profile
 }
 
 func ComponentTypeFromString(compTy string) ComponentType {
@@ -36,4 +38,21 @@ func (c *Component) GetTargetName() string {
 	} else {
 		return c.Name
 	}
+}
+
+func (c *Component) ComputeProfile(name string) *Profile {
+	profileToMerge, ok := c.Profiles[name]
+	if !ok {
+		profileToMerge = c.BaseProfile
+	}
+	var processProfile func(p *Profile) *Profile
+	processProfile = func(p *Profile) *Profile {
+		if p.parentProfile == nil {
+			return p.Clone()
+		} else {
+			pp := processProfile(p.parentProfile)
+			return pp.Merge(p)
+		}
+	}
+	return processProfile(profileToMerge)
 }
