@@ -3,7 +3,7 @@
 set -e
 
 PATH=$PATH:$(realpath bin)
-EX=examples/basic
+EX=examples/basic_with_extra_sources
 
 make
 

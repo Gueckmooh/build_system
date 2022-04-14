@@ -3,16 +3,20 @@ package lua
 import (
 	"fmt"
 
+	"github.com/gueckmooh/bs/pkg/functional"
 	"github.com/gueckmooh/bs/pkg/project"
 	lua "github.com/yuin/gopher-lua"
 )
 
-var profileFunction = map[string]lua.LGFunction{}
+var profileFunction = map[string]lua.LGFunction{
+	"AddSources": newTablePusher("_sources_"),
+}
 
 func NewProfile(L *lua.LState, name string) (*lua.LTable, map[string]*lua.LTable) {
 	table := L.SetFuncs(L.NewTable(), profileFunction)
 
 	L.SetField(table, "_name_", lua.LString(name))
+	L.SetField(table, "_sources_", lua.LNil)
 
 	profileMap := make(map[string]*lua.LTable)
 	profileMap["CPP"] = NewCPPProfile(L)
@@ -29,6 +33,16 @@ func ReadProfileFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Profile, er
 		return nil, err
 	}
 
+	vsources := L.GetField(T, "_sources_")
+	var sources []project.FilesPattern
+	if vsources.Type() != lua.LTTable && vsources.Type() != lua.LTNil {
+		return nil, fmt.Errorf("Error while getting component sources, unexpected type %s",
+			vsources.Type().String())
+	} else if vsources.Type() == lua.LTTable {
+		sources = functional.ListMap(luaSTableToSTable(vsources.(*lua.LTable)),
+			func(s string) project.FilesPattern { return project.FilesPattern(s) })
+	}
+
 	p := project.NewProfile(name)
 
 	vcppprofile := L.GetField(T, "CPP")
@@ -42,6 +56,7 @@ func ReadProfileFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Profile, er
 	}
 
 	p.SetCPPProfile(cppprofile)
+	p.Sources = sources // @todo unify this
 
 	return p, nil
 }
