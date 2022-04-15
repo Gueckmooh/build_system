@@ -81,10 +81,14 @@ func (c *Component) ComputePlatform(name string) *Profile {
 	return processProfile(profileToMerge)
 }
 
-func (c *Component) GetSourcesForProfile(name string) []FilesPattern {
-	profileToMerge, ok := c.Profiles[name]
+func (c *Component) GetSourcesForProfileAndPlatform(profile, platform string) []FilesPattern {
+	profileToMerge, ok := c.Profiles[profile]
 	if !ok {
 		profileToMerge = c.BaseProfile
+	}
+	platformToMerge, ok := c.Platforms[platform]
+	if !ok {
+		platformToMerge = DummyProfile("")
 	}
 	var processProfile func(p *Profile) *Profile
 	processProfile = func(p *Profile) *Profile {
@@ -96,6 +100,7 @@ func (c *Component) GetSourcesForProfile(name string) []FilesPattern {
 		}
 	}
 	mergedProfile := processProfile(profileToMerge)
+	mergedProfile = mergedProfile.Merge(platformToMerge)
 	return append(c.Sources, mergedProfile.Sources...)
 }
 

@@ -217,7 +217,7 @@ func (B *Builder) computeWhatNeedsToBeRebuilt() (bool, error) {
 }
 
 func (B *Builder) computeFilesDependencies() error {
-	sourceMatchers := functional.ListMap(B.component.GetSourcesForProfile(B.profile),
+	sourceMatchers := functional.ListMap(B.component.GetSourcesForProfileAndPlatform(B.profile, B.platform),
 		func(s project.FilesPattern) *globbing.Pattern {
 			return globbing.NewPattern(string(s))
 		})

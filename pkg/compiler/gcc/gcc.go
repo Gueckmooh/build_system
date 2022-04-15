@@ -170,6 +170,10 @@ func (gcc *GCC) LinkFiles(target string, sources ...string) error {
 		cmd = append(cmd, "-shared")
 	}
 
+	cmd = append(cmd, sources...)
+
+	cmd = append(cmd, []string{"-o", target}...)
+
 	libDirOpts := functional.ListMap(gcc.libDirs,
 		func(s string) string {
 			return "-L" + s
@@ -181,10 +185,6 @@ func (gcc *GCC) LinkFiles(target string, sources ...string) error {
 
 	cmd = append(cmd, libDirOpts...)
 	cmd = append(cmd, libOpts...)
-
-	cmd = append(cmd, sources...)
-
-	cmd = append(cmd, []string{"-o", target}...)
 
 	for _, v := range gcc.linkOptions {
 		cmd = append(cmd, v)
