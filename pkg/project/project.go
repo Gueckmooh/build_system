@@ -68,6 +68,54 @@ func (p *Project) ComputeComponentDependencies() error {
 		G:    g,
 		Vmap: vmap,
 	}
+	err := p.bindComponentDependencies()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *Project) bindComponentDependencies() error {
+	var processComponent func(v alist.VertexDescriptor, c *Component) error
+	g := p.ComponentDeps.G
+	processComponent = func(v alist.VertexDescriptor, c *Component) error {
+		oe, err := g.OutEdges(v)
+		if err != nil {
+			return err
+		}
+
+		for _, ed := range oe {
+			target, err := g.Target(ed)
+			if err != nil {
+				return err
+			}
+			err = processComponent(target, c)
+			if err != nil {
+				return err
+			}
+		}
+
+		if g.GetVertexAttribute(v) == c {
+			return nil
+		}
+		if functional.ListIn(c.Requires, g.GetVertexAttribute(v).Name) {
+			c.DirectDependencies = append(c.DirectDependencies, g.GetVertexAttribute(v))
+		}
+		c.Dependencies = append(c.Dependencies, g.GetVertexAttribute(v))
+		return nil
+	}
+	for _, c := range p.Components {
+		v, ok := p.ComponentDeps.Vmap[c]
+		if !ok {
+			panic("Could not find component vertex")
+		}
+		err := processComponent(v, c)
+		if err != nil {
+			return err
+		}
+		c.Dependencies = functional.ListUniq(c.Dependencies)
+		c.DirectDependencies = functional.ListUniq(c.DirectDependencies)
+	}
 	return nil
 }
 
@@ -89,12 +137,16 @@ func (p *Project) GetComponentByPath(componentPath string) (*Component, error) {
 	return nil, fmt.Errorf("Could not find component in '%s'", componentPath)
 }
 
-func (p *Project) GetHeaderDirForComponent(componentName string) (string, error) {
+func (p *Project) GetHeaderDirForComponentName(componentName string) (string, error) {
 	c, err := p.GetComponent(componentName)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(p.Config.GetExportedHeadersDirectory(true), c.Name), nil
+}
+
+func (p *Project) GetHeaderDirForComponent(component *Component) string {
+	return filepath.Join(p.Config.GetExportedHeadersDirectory(true), component.Name)
 }
 
 func (p *Project) GetComponentFiles(root string) ([]string, error) {

@@ -14,16 +14,18 @@ const (
 )
 
 type Component struct {
-	Name            string
-	Languages       []LanguageID
-	Sources         []FilesPattern
-	Type            ComponentType
-	Path            string
-	ExportedHeaders map[string]string
-	Requires        []string
-	Profiles        map[string]*Profile
-	BaseProfile     *Profile
-	Platforms       map[string]*Profile
+	Name               string
+	Languages          []LanguageID
+	Sources            []FilesPattern
+	Type               ComponentType
+	Path               string
+	ExportedHeaders    map[string]string
+	Requires           []string
+	Profiles           map[string]*Profile
+	BaseProfile        *Profile
+	Platforms          map[string]*Profile
+	Dependencies       []*Component
+	DirectDependencies []*Component
 }
 
 func ComponentTypeFromString(compTy string) ComponentType {

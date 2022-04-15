@@ -74,3 +74,29 @@ func ListFindIf[T any](l []T, predicate func(T) bool) *T {
 	}
 	return nil
 }
+
+func ListIn[T comparable](l []T, v T) bool {
+	for _, u := range l {
+		if u == v {
+			return true
+		}
+	}
+	return false
+}
+
+func ListUniq[T comparable](l []T) []T {
+	var nl []T
+	for _, v := range l {
+		found := false
+		for _, w := range nl {
+			if w == v {
+				found = true
+				break
+			}
+		}
+		if !found {
+			nl = append(nl, v)
+		}
+	}
+	return nl
+}

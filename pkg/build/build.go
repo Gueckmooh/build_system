@@ -93,48 +93,48 @@ func (B *Builder) getLinkOptionsForComponent() ([]compiler.CompilerOption, error
 	if len(B.component.Requires) > 0 {
 		opts = append(opts, compiler.WithLibraryDirectory(B.Project.Config.GetLibDirectory(true)))
 	}
-	for _, d := range B.component.Requires {
-		dep, err := B.Project.GetComponent(d)
-		if err != nil {
-			return nil, err
-		}
+	var deps []*project.Component
+	if B.component.Type == project.TypeExecutable {
+		deps = B.component.Dependencies
+	} else {
+		deps = B.component.DirectDependencies
+	}
+	for _, dep := range deps {
 		if dep.Type != project.TypeHeaders {
 			opts = append(opts, compiler.WithLibrary(dep.Name))
+			profile, err := B.getProfileForComponent(dep)
+			if err != nil {
+				return nil, err
+			}
+			for _, opt := range profile.GetCPPProfile().LinkOptions {
+				if strings.HasPrefix(opt, "-l") {
+					opts = append(opts, compiler.WithLibrary(strings.TrimPrefix(opt, "-l")))
+				} else if strings.HasPrefix(opt, "-L") {
+					opts = append(opts, compiler.WithLibraryDirectory(strings.TrimPrefix(opt, "-L")))
+				}
+			}
 		}
+	}
+	if B.component.Type == project.TypeExecutable {
 	}
 	return opts, nil
 }
 
-func (B *Builder) getIncludesOptionsForComponent() ([]compiler.CompilerOption, error) {
+func (B *Builder) getIncludesOptionsForComponent() []compiler.CompilerOption {
 	var opts []compiler.CompilerOption
 	includeBase := B.Project.Config.GetExportedHeadersDirectory(true)
 	if B.component.Type == project.TypeLibrary {
 		opts = append(opts, compiler.WithIncludeDirectory(filepath.Join(includeBase, B.component.Name)))
 	}
-	for _, d := range B.component.Requires {
-		dep, err := B.Project.GetHeaderDirForComponent(d)
-		if err != nil {
-			return nil, err
-		}
+	for _, d := range B.component.Dependencies {
+		dep := B.Project.GetHeaderDirForComponent(d)
 		opts = append(opts, compiler.WithIncludeDirectory(dep))
 	}
 
-	return opts, nil
+	return opts
 }
 
-func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, error) {
-	var opts []compiler.CompilerOption
-	if o, err := B.getIncludesOptionsForComponent(); err != nil {
-		return nil, err
-	} else {
-		opts = append(opts, o...)
-	}
-	if o, err := B.getLinkOptionsForComponent(); err != nil {
-		return nil, err
-	} else {
-		opts = append(opts, o...)
-	}
-
+func (B *Builder) getProfileForComponent(c *project.Component) (*project.Profile, error) {
 	projectProfile, err := B.Project.ComputeProfile(B.profile)
 	if err != nil {
 		return nil, err
@@ -149,6 +149,25 @@ func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, e
 	platform := projectPlatform.Merge(componentPlatform)
 
 	profile := projectProfile.Merge(componentProfile).Merge(platform)
+	return profile, err
+}
+
+func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, error) {
+	var opts []compiler.CompilerOption
+	{
+		o := B.getIncludesOptionsForComponent()
+		opts = append(opts, o...)
+	}
+	if o, err := B.getLinkOptionsForComponent(); err != nil {
+		return nil, err
+	} else {
+		opts = append(opts, o...)
+	}
+
+	profile, err := B.getProfileForComponent(B.component)
+	if err != nil {
+		return nil, err
+	}
 
 	opts = append(opts, compiler.WithCPPDIalect(profile.GetCPPProfile().Dialect))
 	for _, v := range profile.GetCPPProfile().BuildOptions {
