@@ -45,6 +45,7 @@ type GCC struct {
 	targetKind   TargetKind
 	dialect      int8
 	buildOptions []string
+	linkOptions  []string
 }
 
 type GCCOption func(*GCC)
@@ -80,6 +81,12 @@ func WithDialect(dialect int8) GCCOption {
 func WithBuildOption(s string) GCCOption {
 	return func(g *GCC) {
 		g.buildOptions = append(g.buildOptions, s)
+	}
+}
+
+func WithLinkOption(s string) GCCOption {
+	return func(g *GCC) {
+		g.linkOptions = append(g.linkOptions, s)
 	}
 }
 
@@ -178,6 +185,10 @@ func (gcc *GCC) LinkFiles(target string, sources ...string) error {
 	cmd = append(cmd, sources...)
 
 	cmd = append(cmd, []string{"-o", target}...)
+
+	for _, v := range gcc.linkOptions {
+		cmd = append(cmd, v)
+	}
 
 	fmt.Printf("Linking %s%s%s\n", colors.StyleBold, target, colors.StyleReset)
 	_, errs, err := runCommand(cmd)
