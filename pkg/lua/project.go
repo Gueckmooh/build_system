@@ -11,15 +11,16 @@ import (
 )
 
 var projectFunctions = map[string]lua.LGFunction{
-	"Name":           newSetter("_name_"),
-	"Version":        newSetter("_version_"),
-	"Languages":      newTableSetter("_languages_"),
-	"AddSources":     newTablePusher("_sources_"),
-	"DefaultTarget":  newSetter("_default_target_"),
-	"Profile":        luaGetOrCreateProfile,
-	"DefaultProfile": newSetter("_default_profile_"),
-	"Platforms":      luaDeclarePlatforms,
-	"Platform":       luaGetPlatform,
+	"Name":            newSetter("_name_"),
+	"Version":         newSetter("_version_"),
+	"Languages":       newTableSetter("_languages_"),
+	"AddSources":      newTablePusher("_sources_"),
+	"DefaultTarget":   newSetter("_default_target_"),
+	"Profile":         luaGetOrCreateProfile,
+	"DefaultProfile":  newSetter("_default_profile_"),
+	"Platforms":       luaDeclarePlatforms,
+	"Platform":        luaGetPlatform,
+	"DefaultPlatform": newSetter("_default_platform_"),
 }
 
 func luaGetOrCreateProfile(L *lua.LState) int {

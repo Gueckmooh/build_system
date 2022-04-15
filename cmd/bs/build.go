@@ -201,6 +201,7 @@ func tryBuildMain(opts Options) error {
 func BuildUpstream(proj *project.Project, ctb string, bops []build.BuildOption) error {
 	var processNode func(alist.VertexDescriptor) error
 	g := proj.ComponentDeps.G
+	builtComponent := make(map[alist.VertexDescriptor]bool)
 	processNode = func(v alist.VertexDescriptor) error {
 		oe, err := g.OutEdges(v)
 		if err != nil {
@@ -217,6 +218,12 @@ func BuildUpstream(proj *project.Project, ctb string, bops []build.BuildOption) 
 				return err
 			}
 		}
+
+		if _, ok := builtComponent[v]; ok {
+			return nil
+		}
+		builtComponent[v] = true
+
 		builder, err := build.NewBuilder(proj, g.GetVertexAttribute(v).Name, bops...)
 		if err != nil {
 			return err
