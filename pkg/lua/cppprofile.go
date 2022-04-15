@@ -8,6 +8,7 @@ import (
 var cppprofileFunction = map[string]lua.LGFunction{
 	"Dialect":         newSetter("_dialect_"),
 	"AddBuildOptions": newTableAppened("_build_options_"),
+	"AddLinkOptions":  newTableAppened("_link_options_"),
 }
 
 func NewCPPProfile(L *lua.LState) *lua.LTable {
@@ -15,6 +16,7 @@ func NewCPPProfile(L *lua.LState) *lua.LTable {
 
 	L.SetField(table, "_dialect_", lua.LNil)
 	L.SetField(table, "_build_options_", L.NewTable())
+	L.SetField(table, "_link_options_", L.NewTable())
 
 	return table
 }
@@ -30,11 +32,17 @@ func ReadCPPProfileFromLuaTable(L *lua.LState, T *lua.LTable) (*project.CPPProfi
 		return nil, err
 	}
 
+	vlinkOptions, err := luaGetTableInTable(L, T, "_link_options_", "CPP link options")
+	if err != nil {
+		return nil, err
+	}
+
 	p := project.NewCPPProfile()
 	if maybeDialect != nil {
 		p.SetDialectFromString(*maybeDialect)
 	}
 	p.BuildOptions = luaSTableToSTable(vbuildOptions)
+	p.LinkOptions = luaSTableToSTable(vlinkOptions)
 
 	return p, nil
 }

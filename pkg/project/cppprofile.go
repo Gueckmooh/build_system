@@ -33,6 +33,7 @@ const (
 type CPPProfile struct {
 	Dialect      int8
 	BuildOptions []string
+	LinkOptions  []string
 }
 
 func NewCPPProfile() *CPPProfile {
@@ -45,6 +46,7 @@ func (p *CPPProfile) Clone() *CPPProfile {
 	np := &CPPProfile{
 		Dialect:      p.Dialect,
 		BuildOptions: p.BuildOptions,
+		LinkOptions:  p.LinkOptions,
 	}
 	return np
 }
@@ -52,6 +54,7 @@ func (p *CPPProfile) Clone() *CPPProfile {
 func (p *CPPProfile) Merge(op *CPPProfile) (np *CPPProfile) {
 	np = p.Clone()
 	np.BuildOptions = append(np.BuildOptions, op.BuildOptions...)
+	np.LinkOptions = append(np.LinkOptions, op.LinkOptions...)
 	return np
 }
 

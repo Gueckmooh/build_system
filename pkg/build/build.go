@@ -148,6 +148,10 @@ func (B *Builder) getCompilerOptionsForComponent() ([]compiler.CompilerOption, e
 	for _, v := range profile.GetCPPProfile().BuildOptions {
 		opts = append(opts, compiler.WithBuildOption(v))
 	}
+	for _, v := range profile.GetCPPProfile().LinkOptions {
+		// fmt.Println(v)
+		opts = append(opts, compiler.WithLinkOption(v))
+	}
 	return opts, nil
 }
 

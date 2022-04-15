@@ -24,6 +24,7 @@ type compilerOption struct {
 	targetKind         int8
 	cppDialect         int8
 	buildOptions       []string
+	linkOptions        []string
 }
 
 type CompilerOption func(*compilerOption)
@@ -70,6 +71,12 @@ func WithBuildOption(s string) CompilerOption {
 	}
 }
 
+func WithLinkOption(s string) CompilerOption {
+	return func(co *compilerOption) {
+		co.linkOptions = append(co.buildOptions, s)
+	}
+}
+
 func NewCompiler(opts ...CompilerOption) Compiler {
 	options := &compilerOption{
 		forCPP:     false,
@@ -101,6 +108,9 @@ func (co *compilerOption) newGCCCompiler() Compiler {
 	}
 	for _, v := range co.buildOptions {
 		opts = append(opts, gcc.WithBuildOption(v))
+	}
+	for _, v := range co.linkOptions {
+		opts = append(opts, gcc.WithLinkOption(v))
 	}
 	return gcc.NewGPP(opts...)
 }
