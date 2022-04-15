@@ -1,6 +1,7 @@
 package build
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -9,10 +10,12 @@ import (
 
 	alist "github.com/gueckmooh/bs/pkg/adjacency_list"
 	"github.com/gueckmooh/bs/pkg/ccpp"
+	"github.com/gueckmooh/bs/pkg/common/colors"
 	"github.com/gueckmooh/bs/pkg/compiler"
 	"github.com/gueckmooh/bs/pkg/fsutil"
 	"github.com/gueckmooh/bs/pkg/functional"
 	"github.com/gueckmooh/bs/pkg/globbing"
+	log "github.com/gueckmooh/bs/pkg/logging"
 	"github.com/gueckmooh/bs/pkg/project"
 )
 
@@ -49,6 +52,7 @@ type Builder struct {
 	alwaysBuild      bool
 	profile          string
 	platform         string
+	sourceFiles      []string
 }
 
 func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, error) {
@@ -228,6 +232,8 @@ func (B *Builder) computeFilesDependencies() error {
 		return err
 	}
 
+	B.sourceFiles = sourceFiles
+
 	var targetDir string
 	switch B.component.Type {
 	case project.TypeExecutable:
@@ -308,6 +314,8 @@ func (B *Builder) getSourceToCompile(v alist.VertexDescriptor) (alist.VertexDesc
 }
 
 func (B *Builder) Build() error {
+	fmt.Printf("%sBuilding target of component '%s'...%s\n",
+		colors.ColorGray, B.component.Name, colors.ColorReset)
 	g := B.filesGraph
 	var comp compiler.Compiler
 	compilerOptions, err := B.getCompilerOptionsForComponent()
@@ -378,6 +386,17 @@ func (B *Builder) Build() error {
 	return buildNode(B.targetVertex)
 }
 
+func (B *Builder) DumpComponentToBuild() string {
+	var buff bytes.Buffer
+	fmt.Fprintf(&buff, "Component: %s [%s]\n", B.component.Name, B.component.Path)
+	fmt.Fprintf(&buff, "Sources: [\n")
+	for _, fp := range B.sourceFiles {
+		fmt.Fprintf(&buff, "            %s\n", fp)
+	}
+	fmt.Fprintf(&buff, "         ]")
+	return buff.String()
+}
+
 func (B *Builder) tryBuildComponent() (bool, error) {
 	headersExported, err := B.exportHeaders()
 	if err != nil {
@@ -387,6 +406,8 @@ func (B *Builder) tryBuildComponent() (bool, error) {
 	if err := B.computeFilesDependencies(); err != nil {
 		return false, err
 	}
+
+	log.Debug.Write(B.DumpComponentToBuild())
 
 	needBuild, err := B.computeWhatNeedsToBeRebuilt()
 	if err != nil {

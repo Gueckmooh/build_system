@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"github.com/gueckmooh/bs/pkg/common/colors"
 	"github.com/gueckmooh/bs/pkg/fsutil"
 	"github.com/gueckmooh/bs/pkg/globbing"
 )
@@ -77,7 +78,7 @@ func (B *Builder) getFilesToCopyOrRemove(copies map[string]string) (map[string]s
 		}
 		toKeep[to] = true
 		_, err = os.Stat(to)
-		if os.IsNotExist(err) {
+		if os.IsNotExist(err) || B.alwaysBuild {
 			toCopy[from] = to
 		}
 	}
@@ -129,7 +130,7 @@ func (B *Builder) doCopyFiles(copies map[string]string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Writing %s\n", to)
+		fmt.Printf("Writing %s%s%s\n", colors.StyleBold, to, colors.StyleReset)
 		err = ioutil.WriteFile(to, []byte(tramp), 0o600)
 		if err != nil {
 			return err
@@ -177,7 +178,8 @@ func (B *Builder) exportHeaders() (bool, error) {
 		return false, err
 	}
 	if len(copies) > 0 || len(removes) > 0 {
-		fmt.Printf("Exporting headers for component '%s'...\n", B.component.Name)
+		fmt.Printf("%sExporting headers for component '%s'...%s\n",
+			colors.ColorGray, B.component.Name, colors.ColorReset)
 		if len(copies) > 0 {
 			err := B.doCopyFiles(copies)
 			if err != nil {

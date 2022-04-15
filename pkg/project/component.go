@@ -1,6 +1,8 @@
 package project
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type ComponentType int8
 

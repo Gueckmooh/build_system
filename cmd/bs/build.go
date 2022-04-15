@@ -112,10 +112,14 @@ func tryBuildMain(opts Options) error {
 		return err
 	}
 
+	log.Debug.SetPrefix(fmt.Sprintf("%sDebug:%s ", colors.ColorPurple, colors.ColorReset))
+	log.Debug.Printf("Reading project...\n")
+
 	proj, err := projectutils.GetProject(cwd)
 	if err != nil {
 		return err
 	}
+	log.Debug.Printf("Computing component dependencies in project %s\n", proj.Name)
 
 	err = proj.ComputeComponentDependencies()
 	if err != nil {
