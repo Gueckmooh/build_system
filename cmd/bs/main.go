@@ -46,6 +46,7 @@ func tryMain() error {
 
 	if *opts.debug {
 		log.SetDebugLogging(true)
+		log.SetVerboseLogging(true)
 	}
 	if *opts.verbose {
 		log.SetVerboseLogging(true)

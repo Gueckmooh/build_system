@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	alist "github.com/gueckmooh/bs/pkg/adjacency_list"
 	"github.com/gueckmooh/bs/pkg/argparse"
@@ -24,6 +25,8 @@ type BuildOptions struct {
 	alwaysBuild   *bool
 	profile       *string
 	platform      *string
+	jobs          *int
+	guessJobs     *bool
 }
 
 func (opts *BuildOptions) init(parser *argparse.Parser) {
@@ -66,6 +69,15 @@ func (opts *BuildOptions) init(parser *argparse.Parser) {
 	opts.platform = opts.command.String("P", "platform", &argparse.Options{
 		Required: false,
 		Help:     "Use selected platform for build.",
+	})
+	opts.jobs = opts.command.Int("j", "jobs", &argparse.Options{
+		Required: false,
+		Help: `Specifies the number of jobs (commands) to run simultaneously.
+If used with -J, this option takes precedence.`,
+	})
+	opts.guessJobs = opts.command.Flag("J", "guess-jobs", &argparse.Options{
+		Required: false,
+		Help:     `Makes bs guess the number n of jobs to use as with -j n.`,
 	})
 }
 
@@ -156,6 +168,16 @@ func tryBuildMain(opts Options) error {
 	var bops []build.BuildOption
 	if *opts.buildOptions.alwaysBuild {
 		bops = append(bops, build.WithAlwaysBuild)
+	}
+	if *opts.buildOptions.jobs > 1 {
+		bops = append(bops, build.WithJobs(*opts.buildOptions.jobs))
+		if *opts.buildOptions.guessJobs {
+			fmt.Fprintf(os.Stderr, "%sWarning:%s -j and -J are provided, using %d jobs\n",
+				colors.ColorYellow, colors.ColorReset, *opts.buildOptions.jobs)
+		}
+	} else if *opts.buildOptions.guessJobs {
+		bops = append(bops, build.WithJobs(runtime.GOMAXPROCS(0)))
+		log.Log.Printf("%sInfo:%s using %d jobs\n", colors.ColorCyan, colors.ColorReset, runtime.GOMAXPROCS(0))
 	}
 	profilestr := "unspecified"
 	platformstr := "unspecified"

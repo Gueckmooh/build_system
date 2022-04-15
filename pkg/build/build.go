@@ -53,6 +53,7 @@ type Builder struct {
 	profile          string
 	platform         string
 	sourceFiles      []string
+	jobs             int
 }
 
 func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, error) {
@@ -70,6 +71,7 @@ func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, 
 		filesVertices:    make(map[string]alist.VertexDescriptor),
 		alwaysBuild:      false,
 		profile:          "Default",
+		jobs:             1,
 	}
 	for _, opt := range opts {
 		opt(builder)
@@ -346,6 +348,7 @@ func (B *Builder) Build() error {
 		compilerOptions = append(compilerOptions, compiler.TargetLib)
 	}
 	comp = compiler.NewCompiler(compilerOptions...)
+	scheduler := compiler.NewScheduler(comp, int64(B.jobs))
 
 	var buildNode func(alist.VertexDescriptor) error
 	buildNode = func(v alist.VertexDescriptor) error {
@@ -381,7 +384,7 @@ func (B *Builder) Build() error {
 			if err != nil {
 				return err
 			}
-			err = comp.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
+			err = scheduler.CompileFile(g.GetVertexAttribute(v).name, g.GetVertexAttribute(source).name)
 			if err != nil {
 				return err
 			}
@@ -395,7 +398,7 @@ func (B *Builder) Build() error {
 				}
 				sources = append(sources, g.GetVertexAttribute(source).name)
 			}
-			err = comp.LinkFiles(g.GetVertexAttribute(v).name, sources...)
+			err = scheduler.LinkFiles(g.GetVertexAttribute(v).name, sources...)
 			if err != nil {
 				return err
 			}
