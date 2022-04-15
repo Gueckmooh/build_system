@@ -94,7 +94,9 @@ func (B *Builder) getLinkOptionsForComponent() ([]compiler.CompilerOption, error
 		if err != nil {
 			return nil, err
 		}
-		opts = append(opts, compiler.WithLibrary(dep.Name))
+		if dep.Type != project.TypeHeaders {
+			opts = append(opts, compiler.WithLibrary(dep.Name))
+		}
 	}
 	return opts, nil
 }

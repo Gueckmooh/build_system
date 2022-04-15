@@ -7,6 +7,7 @@ type ComponentType int8
 const (
 	TypeExecutable ComponentType = iota
 	TypeLibrary
+	TypeHeaders
 	TypeUnknown
 )
 
@@ -29,6 +30,8 @@ func ComponentTypeFromString(compTy string) ComponentType {
 		return TypeExecutable
 	case "library":
 		return TypeLibrary
+	case "headers":
+		return TypeHeaders
 	}
 	return TypeUnknown
 }

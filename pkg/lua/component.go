@@ -103,12 +103,15 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 		project.LanguageIDFromString)
 
 	vsources := L.GetField(T, "_sources_")
-	if vsources.Type() != lua.LTTable {
-		return nil, fmt.Errorf("Error while getting component sources, unexpected type %s",
-			vsources.Type().String())
+	var sources []project.FilesPattern
+	if ty != project.TypeHeaders {
+		if vsources.Type() != lua.LTTable {
+			return nil, fmt.Errorf("Error while getting component sources, unexpected type %s",
+				vsources.Type().String())
+		}
+		sources = functional.ListMap(luaSTableToSTable(vsources.(*lua.LTable)),
+			func(s string) project.FilesPattern { return project.FilesPattern(s) })
 	}
-	sources := functional.ListMap(luaSTableToSTable(vsources.(*lua.LTable)),
-		func(s string) project.FilesPattern { return project.FilesPattern(s) })
 
 	vexported_headers := L.GetField(T, "_exported_headers_")
 	if vexported_headers.Type() != lua.LTTable && vexported_headers.Type() != lua.LTNil {
