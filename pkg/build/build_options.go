@@ -21,3 +21,9 @@ func WithPlatform(s string) BuildOption {
 		b.platform = s
 	}
 }
+
+func WithJobs(j int) BuildOption {
+	return func(b *Builder) {
+		b.jobs = j
+	}
+}
