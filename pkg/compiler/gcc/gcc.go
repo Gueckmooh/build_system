@@ -212,6 +212,16 @@ func (gcc *GCC) GetFileDependencies(target, source string) (string, []string, er
 			return "-I" + s
 		})
 
+	// @todo add function that returns the options
+	dialectopt := gcc.getDialectOption()
+	if dialectopt != "" {
+		cmd = append(cmd, dialectopt)
+	}
+
+	for _, v := range gcc.buildOptions {
+		cmd = append(cmd, v)
+	}
+
 	cmd = append(cmd, includesOpts...)
 
 	cmd = append(cmd, "-MM")
