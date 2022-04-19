@@ -71,10 +71,12 @@ func (p *Project) ComputeComponentDependencies() error {
 	if isCyclic, cycle, err := g.HasCycle(); err != nil {
 		return err
 	} else if isCyclic {
+		nameCycles := functional.ListMap(cycle, func(v alist.VertexDescriptor) string {
+			return g.GetVertexAttribute(v).Name
+		})
+		nameCycles = append(nameCycles, nameCycles[0])
 		return fmt.Errorf("Forbidden cyclic component dependencies:\n\t%s",
-			strings.Join(functional.ListMap(cycle, func(v alist.VertexDescriptor) string {
-				return g.GetVertexAttribute(v).Name
-			}), " -> "))
+			strings.Join(nameCycles, " -> "))
 	}
 
 	// vertexWritterOption := alist.WithVertexLabelWritter[Component, alist.AttributeNone](func(s *Component) string {
