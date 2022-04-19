@@ -3,8 +3,10 @@ package project
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	alist "github.com/gueckmooh/bs/pkg/adjacency_list"
+	"github.com/gueckmooh/bs/pkg/common/colors"
 	"github.com/gueckmooh/bs/pkg/fsutil"
 	"github.com/gueckmooh/bs/pkg/functional"
 	"github.com/gueckmooh/bs/pkg/globbing"
@@ -37,7 +39,13 @@ type ComponentDependencyGraph struct {
 }
 
 func (p *Project) ComputeComponentDependencies() error {
+	fmt.Printf("%sCompute components dependencies...%s\n",
+		colors.ColorGray, colors.ColorReset)
 	g := alist.NewGraph[Component, alist.AttributeNone](alist.DirectedGraph)
+	visited := make(map[alist.VertexDescriptor]bool)
+	for _, v := range g.GetVertices() {
+		visited[v] = false
+	}
 	vmap := make(map[*Component]alist.VertexDescriptor)
 	getVertex := func(c *Component) alist.VertexDescriptor {
 		if v, ok := vmap[c]; ok {
@@ -58,6 +66,15 @@ func (p *Project) ComputeComponentDependencies() error {
 			u := getVertex(cd)
 			g.AddEdge(v, u)
 		}
+	}
+
+	if isCyclic, cycle, err := g.HasCycle(); err != nil {
+		return err
+	} else if isCyclic {
+		return fmt.Errorf("Forbidden cyclic component dependencies:\n\t%s",
+			strings.Join(functional.ListMap(cycle, func(v alist.VertexDescriptor) string {
+				return g.GetVertexAttribute(v).Name
+			}), " -> "))
 	}
 
 	// vertexWritterOption := alist.WithVertexLabelWritter[Component, alist.AttributeNone](func(s *Component) string {

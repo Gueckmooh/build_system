@@ -78,6 +78,14 @@ func (g *Graph[VA, EA]) AddEdge(from, to VertexDescriptor, attributes ...*EA) Ed
 	return e
 }
 
+func (g *Graph[VA, EA]) GetVertices() []VertexDescriptor {
+	var vertices []VertexDescriptor
+	for v := range g.verticesAdgacency {
+		vertices = append(vertices, v)
+	}
+	return vertices
+}
+
 func (g *Graph[VA, EA]) GetVertexAttribute(v VertexDescriptor) *VA {
 	return g.verticesAttributes[v]
 }
@@ -170,4 +178,68 @@ func (g *Graph[VA, EV]) IsLeef(v VertexDescriptor) bool {
 		return len(a) == 0
 	}
 	return false
+}
+
+func (g *Graph[VA, EV]) Neighbors(v VertexDescriptor) ([]VertexDescriptor, error) {
+	oe, err := g.OutEdges(v)
+	if err != nil {
+		return nil, err
+	}
+	var neighbors []VertexDescriptor
+	for _, ed := range oe {
+		target, err := g.Target(ed)
+		if err != nil {
+			return nil, err
+		}
+		neighbors = append(neighbors, target)
+	}
+	return neighbors, nil
+}
+
+func (g *Graph[VA, EV]) HasCycle() (bool, []VertexDescriptor, error) {
+	visited := make(map[VertexDescriptor]bool)
+	recStack := make(map[VertexDescriptor]bool)
+	for v := range g.verticesAdgacency {
+		visited[v] = false
+		recStack[v] = false
+	}
+
+	var isCyclicRec func(v VertexDescriptor, stack []VertexDescriptor) (bool, []VertexDescriptor, error)
+	isCyclicRec = func(v VertexDescriptor, stack []VertexDescriptor) (bool, []VertexDescriptor, error) {
+		visited[v] = true
+		recStack[v] = true
+
+		neighbors, err := g.Neighbors(v)
+		if err != nil {
+			return false, nil, err
+		}
+		for _, neighbor := range neighbors {
+			if recStack[neighbor] {
+				return true, append(stack, v), nil
+			}
+			if !visited[neighbor] {
+				if isC, nstack, err := isCyclicRec(neighbor, append(stack, v)); err != nil {
+					return false, nil, err
+				} else if isC {
+					return true, nstack, nil
+				}
+			}
+		}
+		recStack[v] = false
+
+		return false, nil, nil
+	}
+
+	for v := range g.verticesAdgacency {
+		if !visited[v] {
+			c, stack, err := isCyclicRec(v, []VertexDescriptor{})
+			if err != nil {
+				return false, nil, err
+			}
+			if c {
+				return true, stack, nil
+			}
+		}
+	}
+	return false, nil, nil
 }

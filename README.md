@@ -7,12 +7,12 @@
 - [X] Get dependencies to headers
 - [X] Build a basic library, using basic configuration
 - [X] Compute dependencies between components
-- [ ] Check that there is no cycle in dependencies
+- [X] Check that there is no cycle in dependencies
 - [X] Build components and dependencies, then link
 - [X] Add build options for components
 - [X] Add platforms & profiles
 - [X] Add parallel compilation
-- [ ] Add pre and post build hooks
+- [X] Add pre and post build hooks
 - [ ] Add basic integrations tests
 - [ ] Do some (massive) cleanup
 - [ ] Add documentation

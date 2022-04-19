@@ -139,7 +139,6 @@ func tryBuildMain(opts Options) error {
 	if err != nil {
 		return err
 	}
-	// @todo make sure there is no cycle
 
 	ctbs := *opts.buildOptions.name
 	if len(ctbs) == 0 {
