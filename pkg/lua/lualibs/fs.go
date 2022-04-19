@@ -16,7 +16,9 @@ var fslibFunctions = map[string]lua.LGFunction{
 func luaCopyFile(L *lua.LState) int {
 	from := L.ToString(1)
 	to := L.ToString(2)
-	fmt.Printf("CopyFile(%s, %s)\n", from, to)
+	fmt.Printf("Copying file %s%s%s to %s%s%s...\n",
+		colors.StyleBold, from, colors.StyleReset,
+		colors.StyleBold, to, colors.StyleReset)
 	err := fsutil.CopyFile(from, to)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%sError:%s could not copy file '%s' to '%s':\n\t%s\n",

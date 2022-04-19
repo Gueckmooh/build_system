@@ -178,8 +178,8 @@ func (B *Builder) exportHeaders() (bool, error) {
 		return false, err
 	}
 	if len(copies) > 0 || len(removes) > 0 {
-		fmt.Printf("%sExporting headers for component '%s'...%s\n",
-			colors.ColorGray, B.component.Name, colors.ColorReset)
+		fmt.Printf("%sExporting headers...%s\n",
+			colors.ColorGray, colors.ColorReset)
 		if len(copies) > 0 {
 			err := B.doCopyFiles(copies)
 			if err != nil {

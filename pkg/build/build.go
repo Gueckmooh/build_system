@@ -17,7 +17,6 @@ import (
 	"github.com/gueckmooh/bs/pkg/globbing"
 	log "github.com/gueckmooh/bs/pkg/logging"
 	"github.com/gueckmooh/bs/pkg/lua"
-	"github.com/gueckmooh/bs/pkg/lua/luadump"
 	"github.com/gueckmooh/bs/pkg/project"
 )
 
@@ -338,8 +337,11 @@ func (B *Builder) getSourceToCompile(v alist.VertexDescriptor) (alist.VertexDesc
 }
 
 func (B *Builder) PreBuild() error {
+	if len(B.component.PrebuildActions) > 0 {
+		fmt.Printf("%sRunning prebuild hooks...%s\n",
+			colors.ColorGray, colors.ColorReset)
+	}
 	for _, pb := range B.component.PrebuildActions {
-		fmt.Printf("(%s)\n", luadump.DumpFunction(pb))
 		err := B.RunLuaFunction(pb)
 		if err != nil {
 			return err
@@ -350,11 +352,10 @@ func (B *Builder) PreBuild() error {
 
 func (B *Builder) PostBuild() error {
 	if len(B.component.PostbuildActions) > 0 {
-		fmt.Printf("%sRunning postbuild hooks for component '%s'...%s\n",
-			colors.ColorGray, B.component.Name, colors.ColorReset)
+		fmt.Printf("%sRunning postbuild hooks...%s\n",
+			colors.ColorGray, colors.ColorReset)
 	}
 	for _, pb := range B.component.PostbuildActions {
-		fmt.Printf("(%s)\n", luadump.DumpFunction(pb))
 		err := B.RunLuaFunction(pb)
 		if err != nil {
 			return err
@@ -364,8 +365,8 @@ func (B *Builder) PostBuild() error {
 }
 
 func (B *Builder) Build() error {
-	fmt.Printf("%sBuilding target of component '%s'...%s\n",
-		colors.ColorGray, B.component.Name, colors.ColorReset)
+	fmt.Printf("%sBuilding target...%s\n",
+		colors.ColorGray, colors.ColorReset)
 	g := B.filesGraph
 	var comp compiler.Compiler
 	compilerOptions, err := B.getCompilerOptionsForComponent()

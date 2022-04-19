@@ -17,8 +17,6 @@ profileDebug.CPP:AddBuildOptions "-DDEBUG"
 profileDebug:AddSources "debug/"
 component.CPP:AddLinkOptions "-lm"
 
-component:AddPrebuildAction(function (componentName) print(componentName) end)
-component:AddPrebuildAction(function () print("componentName") end)
 component:AddPostbuildAction(function (targetPath)
     base = path.Base(targetPath)
     dir = path.Dir(targetPath)
