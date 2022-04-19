@@ -11,6 +11,17 @@
 - [X] Build components and dependencies, then link
 - [X] Add build options for components
 - [X] Add platforms & profiles
+- [X] Add parallel compilation
+- [ ] Add pre and post build hooks
+- [ ] Add basic integrations tests
+- [ ] Do some (massive) cleanup
+- [ ] Add documentation
+
+## Road to v0.0.2
 - [ ] Generate makefiles to build this basic configuration
 - [ ] Look at ninja as a generation back end
-- [ ] Add basic integrations tests
+- [ ] Generate lua bindings (optional)
+
+## Road to a cleaner v0.0.2
+- [ ] Hack gopher lua to have more insights on the parsed lua
+- [ ] Find a way to decompile lua functions and convert them to bash
