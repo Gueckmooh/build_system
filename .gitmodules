@@ -1,0 +1,3 @@
+[submodule "internal/gopher-lua"]
+	path = internal/gopher-lua
+	url = git@github.com:Gueckmooh/gopher-lua.git

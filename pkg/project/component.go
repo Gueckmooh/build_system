@@ -2,6 +2,8 @@ package project
 
 import (
 	"fmt"
+
+	lua "github.com/yuin/gopher-lua"
 )
 
 type ComponentType int8
@@ -26,6 +28,8 @@ type Component struct {
 	Platforms          map[string]*Profile
 	Dependencies       []*Component
 	DirectDependencies []*Component
+	PrebuildActions    []*lua.LFunction
+	PostbuildActions   []*lua.LFunction
 }
 
 func ComponentTypeFromString(compTy string) ComponentType {

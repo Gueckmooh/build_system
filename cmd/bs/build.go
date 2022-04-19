@@ -12,8 +12,8 @@ import (
 	"github.com/gueckmooh/bs/pkg/common/colors"
 	"github.com/gueckmooh/bs/pkg/fsutil"
 	log "github.com/gueckmooh/bs/pkg/logging"
+	"github.com/gueckmooh/bs/pkg/lua"
 	"github.com/gueckmooh/bs/pkg/project"
-	projectutils "github.com/gueckmooh/bs/pkg/project_utils"
 )
 
 type BuildOptions struct {
@@ -127,7 +127,9 @@ func tryBuildMain(opts Options) error {
 	log.Debug.SetPrefix(fmt.Sprintf("%sDebug:%s ", colors.ColorPurple, colors.ColorReset))
 	log.Debug.Printf("Reading project...\n")
 
-	proj, err := projectutils.GetProject(cwd)
+	C := lua.NewLuaContext()
+	defer C.Close()
+	proj, err := C.GetProject(cwd)
 	if err != nil {
 		return err
 	}
@@ -166,6 +168,7 @@ func tryBuildMain(opts Options) error {
 	}
 
 	var bops []build.BuildOption
+	bops = append(bops, build.WithLuaContect(C))
 	if *opts.buildOptions.alwaysBuild {
 		bops = append(bops, build.WithAlwaysBuild)
 	}

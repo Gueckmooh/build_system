@@ -1,5 +1,7 @@
 package build
 
+import "github.com/gueckmooh/bs/pkg/lua"
+
 type BuildOption func(b *Builder)
 
 // func WithBuildUpstream(b *Builder) {
@@ -25,5 +27,11 @@ func WithPlatform(s string) BuildOption {
 func WithJobs(j int) BuildOption {
 	return func(b *Builder) {
 		b.jobs = j
+	}
+}
+
+func WithLuaContect(C *lua.LuaContext) BuildOption {
+	return func(b *Builder) {
+		b.C = C
 	}
 }

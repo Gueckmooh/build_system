@@ -2,6 +2,7 @@ package fsutil
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -116,4 +117,20 @@ func FindFileUpstream(filename string, root string) (string, error) {
 	} else {
 		return filepath.Join(root, filename), nil
 	}
+}
+
+func CopyFile(from, to string) error {
+	stat, err := os.Stat(from)
+	if err != nil {
+		return err
+	}
+	data, err := ioutil.ReadFile(from)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(to, data, stat.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	return nil
 }

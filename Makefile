@@ -15,7 +15,7 @@ LDFLAGS    := -w -s
 GOFLAGS    := -gcflags=all='-N'
 
 DEPDIR ?= .deps
-.PRECIOUS: %/.f %.c $(DEPDIR)/%.d
+.PRECIOUS: %/.f $(DEPDIR)/%.d
 
 %/.f:
 	$(QUIET)mkdir -p $(dir $@)
@@ -23,7 +23,7 @@ DEPDIR ?= .deps
 
 NOINC = clean, mrproper
 
-SRC := $(shell find . -type f -name '*.go' -print) go.mod
+SRC := $(shell find pkg -type f -name '*.go' -print) $(shell find cmd -type f -name '*.go' -print) go.mod
 
 ALLBINS := $(addprefix $(BINDIR)/, $(ALLBIN))
 

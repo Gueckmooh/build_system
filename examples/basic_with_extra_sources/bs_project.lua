@@ -18,3 +18,5 @@ project:DefaultProfile "Debug"
 
 debugProfile = project:Profile "Debug"
 debugProfile.CPP:AddBuildOptions "-O0"
+
+project.Toto(function (toto) print(toto, "bla") end)

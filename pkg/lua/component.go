@@ -26,18 +26,24 @@ func luaNewComponent(L *lua.LState) int {
 	return 1
 }
 
+// func toto(L *lua.LState) {
+// 	L.ToFunction(1).Proto.
+// }
+
 var (
 	componentsFunctions = map[string]lua.LGFunction{
 		"NewComponent": luaNewComponent,
 	}
 	componentFunction = map[string]lua.LGFunction{
-		"Type":            newSetter("_type_"),
-		"Languages":       newTableSetter("_languages_"),
-		"AddSources":      newTablePusher("_sources_"),
-		"ExportedHeaders": newTableSetter("_exported_headers_"),
-		"Requires":        newTableSetter("_requires_"),
-		"Profile":         luaGetOrCreateProfile,
-		"Platform":        luaGetOrCreatePlatform,
+		"Type":               newSetter("_type_"),
+		"Languages":          newTableSetter("_languages_"),
+		"AddSources":         newTablePusher("_sources_"),
+		"ExportedHeaders":    newTableSetter("_exported_headers_"),
+		"Requires":           newTableSetter("_requires_"),
+		"Profile":            luaGetOrCreateProfile,
+		"Platform":           luaGetOrCreatePlatform,
+		"AddPrebuildAction":  newTablePusher("_prebuild_actions_"),
+		"AddPostbuildAction": newTablePusher("_postbuild_actions_"),
 	}
 )
 
@@ -60,6 +66,8 @@ func NewComponent(L *lua.LState, name string) *lua.LTable {
 	L.SetField(table, "_path_", lua.LString(filepath.Dir(currentComponentFile)))
 	L.SetField(table, "_exported_headers_", lua.LNil)
 	L.SetField(table, "_requires_", lua.LNil)
+	L.SetField(table, "_prebuild_actions_", L.NewTable())
+	L.SetField(table, "_postbuild_actions_", L.NewTable())
 
 	profile, profileMap := NewProfile(L, "Default")
 	L.SetField(table, "_base_profile_", profile)
@@ -166,6 +174,34 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 		}
 	}
 
+	var prebuildActions []*lua.LFunction
+	{
+		vprebuildactions := L.GetField(T, "_prebuild_actions_")
+		if vprebuildactions.Type() != lua.LTTable {
+			return nil, fmt.Errorf("Error while getting component prebuild actions, unexpected type %s",
+				vprebuildactions.Type().String())
+		}
+		L.ForEach(vprebuildactions.(*lua.LTable), func(_ lua.LValue, f lua.LValue) {
+			if f.Type() == lua.LTFunction {
+				prebuildActions = append(prebuildActions, f.(*lua.LFunction))
+			}
+		})
+	}
+
+	var postbuildActions []*lua.LFunction
+	{
+		vpostbuildactions := L.GetField(T, "_postbuild_actions_")
+		if vpostbuildactions.Type() != lua.LTTable {
+			return nil, fmt.Errorf("Error while getting component postbuild actions, unexpected type %s",
+				vpostbuildactions.Type().String())
+		}
+		L.ForEach(vpostbuildactions.(*lua.LTable), func(_ lua.LValue, f lua.LValue) {
+			if f.Type() == lua.LTFunction {
+				postbuildActions = append(postbuildActions, f.(*lua.LFunction))
+			}
+		})
+	}
+
 	platforms := make(map[string]*project.Profile)
 	{
 		vplatforms := L.GetField(T, "_platforms_")
@@ -184,16 +220,18 @@ func ReadComponentFromLuaTable(L *lua.LState, T *lua.LTable) (*project.Component
 	}
 
 	proj := &project.Component{
-		Name:            name,
-		Languages:       languages,
-		Sources:         sources,
-		Type:            ty,
-		Path:            path,
-		ExportedHeaders: exported_headers,
-		Requires:        requires,
-		BaseProfile:     baseProfile,
-		Profiles:        profiles,
-		Platforms:       platforms,
+		Name:             name,
+		Languages:        languages,
+		Sources:          sources,
+		Type:             ty,
+		Path:             path,
+		ExportedHeaders:  exported_headers,
+		Requires:         requires,
+		BaseProfile:      baseProfile,
+		Profiles:         profiles,
+		Platforms:        platforms,
+		PrebuildActions:  prebuildActions,
+		PostbuildActions: postbuildActions,
 	}
 
 	return proj, nil

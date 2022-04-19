@@ -1,6 +1,9 @@
 package lua
 
-import lua "github.com/yuin/gopher-lua"
+import (
+	"github.com/gueckmooh/bs/pkg/lua/lualibs"
+	lua "github.com/yuin/gopher-lua"
+)
 
 type LuaContext struct {
 	L      *lua.LState
@@ -26,4 +29,5 @@ func (C *LuaContext) Close() {
 func InitializeLuaState(L *lua.LState) {
 	L.PreloadModule("project", ProjectLoader)
 	L.PreloadModule("components", ComponentsLoader)
+	lualibs.LoadLibs(L)
 }

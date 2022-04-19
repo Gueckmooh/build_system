@@ -7,8 +7,8 @@ import (
 
 	"github.com/gueckmooh/bs/pkg/argparse"
 	"github.com/gueckmooh/bs/pkg/fsutil"
+	"github.com/gueckmooh/bs/pkg/lua"
 	"github.com/gueckmooh/bs/pkg/project"
-	projectutils "github.com/gueckmooh/bs/pkg/project_utils"
 )
 
 type CleanOptions struct {
@@ -42,7 +42,9 @@ func tryCleanMain(opts Options) error {
 		return err
 	}
 
-	proj, err := projectutils.GetProject(cwd)
+	C := lua.NewLuaContext()
+	defer C.Close()
+	proj, err := C.GetProject(cwd)
 	if err != nil {
 		return err
 	}

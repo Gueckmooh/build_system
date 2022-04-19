@@ -16,6 +16,8 @@ import (
 	"github.com/gueckmooh/bs/pkg/functional"
 	"github.com/gueckmooh/bs/pkg/globbing"
 	log "github.com/gueckmooh/bs/pkg/logging"
+	"github.com/gueckmooh/bs/pkg/lua"
+	"github.com/gueckmooh/bs/pkg/lua/luadump"
 	"github.com/gueckmooh/bs/pkg/project"
 )
 
@@ -54,6 +56,7 @@ type Builder struct {
 	platform         string
 	sourceFiles      []string
 	jobs             int
+	C                *lua.LuaContext
 }
 
 func NewBuilder(p *project.Project, ctb string, opts ...BuildOption) (*Builder, error) {
@@ -334,6 +337,32 @@ func (B *Builder) getSourceToCompile(v alist.VertexDescriptor) (alist.VertexDesc
 		B.filesGraph.GetVertexAttribute(v).name)
 }
 
+func (B *Builder) PreBuild() error {
+	for _, pb := range B.component.PrebuildActions {
+		fmt.Printf("(%s)\n", luadump.DumpFunction(pb))
+		err := B.RunLuaFunction(pb)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (B *Builder) PostBuild() error {
+	if len(B.component.PostbuildActions) > 0 {
+		fmt.Printf("%sRunning postbuild hooks for component '%s'...%s\n",
+			colors.ColorGray, B.component.Name, colors.ColorReset)
+	}
+	for _, pb := range B.component.PostbuildActions {
+		fmt.Printf("(%s)\n", luadump.DumpFunction(pb))
+		err := B.RunLuaFunction(pb)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (B *Builder) Build() error {
 	fmt.Printf("%sBuilding target of component '%s'...%s\n",
 		colors.ColorGray, B.component.Name, colors.ColorReset)
@@ -420,6 +449,11 @@ func (B *Builder) DumpComponentToBuild() string {
 }
 
 func (B *Builder) tryBuildComponent() (bool, error) {
+	err := B.PreBuild()
+	if err != nil {
+		return false, err
+	}
+
 	headersExported, err := B.exportHeaders()
 	if err != nil {
 		return false, err
@@ -448,6 +482,10 @@ func (B *Builder) tryBuildComponent() (bool, error) {
 
 	if needBuild {
 		err = B.Build()
+		if err != nil {
+			return false, err
+		}
+		err = B.PostBuild()
 		if err != nil {
 			return false, err
 		}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gueckmooh/bs/pkg/common/colors"
 	"github.com/gueckmooh/bs/pkg/functional"
+	"github.com/gueckmooh/bs/pkg/lua/luadump"
 	"github.com/gueckmooh/bs/pkg/project"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -21,6 +22,32 @@ var projectFunctions = map[string]lua.LGFunction{
 	"Platforms":       luaDeclarePlatforms,
 	"Platform":        luaGetPlatform,
 	"DefaultPlatform": newSetter("_default_platform_"),
+	"Toto":            luaToto,
+}
+
+func luaToto(L *lua.LState) int {
+	v := L.ToFunction(1)
+	// fmt.Printf("--> toto %#v\n", v.Proto.Chunk)
+	// for _, s := range v.Proto.Chunk.Stmts {
+	// 	fmt.Printf("stmt: %#v\n", s)
+	// 	switch stmt := s.(type) {
+	// 	case *ast.FuncCallStmt:
+	// 		fmt.Printf("stmt.Expr: %#v\n", stmt.Expr)
+	// 		switch fun := stmt.Expr.(type) {
+	// 		case *ast.FuncCallExpr:
+	// 			fmt.Printf("fun.Func: %#v\n", fun.Func)
+	// 			fmt.Printf("fun.Args: %#v\n", fun.Args)
+	// 			for _, arg := range fun.Args {
+	// 				switch a := arg.(type) {
+	// 				case *ast.StringExpr:
+	// 					fmt.Printf("a: %#v\n", a.Value)
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	fmt.Printf("-> %s\n", luadump.DumpFunction(v))
+	return 0
 }
 
 func luaGetOrCreateProfile(L *lua.LState) int {

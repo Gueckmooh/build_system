@@ -2,7 +2,9 @@ package lua
 
 import (
 	"fmt"
+	"path/filepath"
 
+	"github.com/gueckmooh/bs/pkg/project"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -122,4 +124,27 @@ func luaMaybeGetStringInTable(L *lua.LState, T *lua.LTable, field, desc string) 
 	} else {
 		return nil, nil
 	}
+}
+
+func (C *LuaContext) GetProject(root string) (*project.Project, error) {
+	// defer C.Close()
+	proj, err := C.ReadProjectFile(filepath.Join(root, project.ProjectConfigFile))
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := proj.GetComponentFiles(root)
+	if err != nil {
+		return nil, err
+	}
+
+	components, err := C.ReadComponentFiles(files)
+	if err != nil {
+		return nil, err
+	}
+
+	proj.Components = components
+	proj.Config = project.GetDefaultConfig(root)
+
+	return proj, nil
 }
