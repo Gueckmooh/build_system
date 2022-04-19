@@ -24,5 +24,3 @@ component:AddPostbuildAction(function (targetPath)
     print(string.format("copy %s -> %s", targetPath, newPath))
     fs.CopyFile(targetPath, newPath)
 end)
-
-component:pouet()
