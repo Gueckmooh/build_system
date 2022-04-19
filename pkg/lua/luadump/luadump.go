@@ -3,6 +3,7 @@ package luadump
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/gueckmooh/bs/pkg/functional"
@@ -49,6 +50,12 @@ func (d *Dumper) DumpStmt(s ast.Stmt) string {
 	}
 }
 
+var reAlphaKey *regexp.Regexp = regexp.MustCompile(`^"[a-zA-Z_][a-zA-Z0-9_]*"$`)
+
+func isAlphaKey(key string) bool {
+	return reAlphaKey.MatchString(key)
+}
+
 func (d *Dumper) DumpExpr(e ast.Expr) string {
 	switch expr := e.(type) {
 	case *ast.FuncCallExpr:
@@ -71,7 +78,13 @@ func (d *Dumper) DumpExpr(e ast.Expr) string {
 	case *ast.StringExpr:
 		return fmt.Sprintf(`"%s"`, expr.Value)
 	case *ast.AttrGetExpr:
-		return fmt.Sprintf("%s[%s]", d.DumpExpr(expr.Object), d.DumpExpr(expr.Key))
+		key := d.DumpExpr(expr.Key)
+		if isAlphaKey(key) {
+			return fmt.Sprintf("%s.%s", d.DumpExpr(expr.Object),
+				strings.TrimSuffix(strings.TrimPrefix(key, `"`), `"`))
+		} else {
+			return fmt.Sprintf("%s[%s]", d.DumpExpr(expr.Object), key)
+		}
 	case *ast.StringConcatOpExpr:
 		return fmt.Sprintf("%s .. %s", d.DumpExpr(expr.Lhs), d.DumpExpr(expr.Rhs))
 	default:

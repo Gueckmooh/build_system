@@ -17,10 +17,12 @@ profileDebug.CPP:AddBuildOptions "-DDEBUG"
 profileDebug:AddSources "debug/"
 component.CPP:AddLinkOptions "-lm"
 
-component:AddPostbuildAction(function (targetPath)
+component:AddPostbuildAction(
+  function (targetPath, to)
     base = path.Base(targetPath)
     dir = path.Dir(targetPath)
     newPath = path.Join(dir, "new_" .. base)
     print(string.format("copy %s -> %s", targetPath, newPath))
     fs.CopyFile(targetPath, newPath)
-end)
+  end
+)
