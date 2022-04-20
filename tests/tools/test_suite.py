@@ -34,16 +34,47 @@ class CompletedProcessToto:
         self.__res = res
 
     def mustBeOk(self):
+        print(".", end="", flush=True)
         if self.__res.returncode != 0:
             raise AssertError(
-                "Execution failed with error code {} where it should succeed".format(
-                    res.returncode
+                "Execution failed with error code {} where it should succeed\nstdout:\n{}\nstderr:\n{}".format(
+                    self.__res.returncode,
+                    self.__res.stdout.decode("utf-8"),
+                    self.__res.stderr.decode("utf-8"),
                 )
             )
+        return self
 
     def mustBeNOk(self):
+        print(".", end="", flush=True)
         if self.__res.returncode == 0:
-            raise AssertError("Execution succeeded where it should fail")
+            raise AssertError(
+                "Execution succeeded where it should fail\nstdout:\n{}\nstderr:\n{}".format(
+                    self.__res.stdout.decode("utf-8"),
+                    self.__res.stderr.decode("utf-8"),
+                )
+            )
+        return self
+
+    def stderrMustContain(self, c):
+        print(".", end="", flush=True)
+        if c not in self.__res.stderr.decode("utf-8"):
+            raise AssertError(
+                'Could not find "{}" in:\n{}'.format(
+                    c, self.__res.stderr.decode("utf-8")
+                )
+            )
+        return self
+
+    def stdoutMustContain(self, c):
+        print(".", end="", flush=True)
+        if c not in self.__res.stdout.decode("utf-8"):
+            raise AssertError(
+                'Could not find "{}" in:\n{}'.format(
+                    c, self.__res.stdout.decode("utf-8")
+                )
+            )
+        return self
 
 
 class TestSuite:
@@ -60,10 +91,11 @@ class TestSuite:
 
     def Run(self, testName: str):
         print(
-            "\tRunning test {}{}{}...".format(
+            "\tRunning test {}{}{}".format(
                 Style.BRIGHT, testName, Style.RESET_ALL
             ),
             end="",
+            flush=True,
         )
         try:
             getattr(self, testName)()

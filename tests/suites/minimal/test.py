@@ -14,3 +14,9 @@ class MinimalSuite(TestSuite):
     def TestClean(self):
         with self.sandbox() as s:
             self.runBS(["clean"]).mustBeOk()
+
+    def TestBuildCleanRebuild(self):
+        with self.sandbox() as s:
+            self.runBS(["build"]).mustBeOk()
+            self.runBS(["clean"]).mustBeOk()
+            self.runBS(["build"]).mustBeOk()
