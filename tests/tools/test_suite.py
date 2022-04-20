@@ -3,10 +3,7 @@ import shutil
 import os.path
 import subprocess
 from colorama import Fore, Style
-
-
-class AssertError(Exception):
-    pass
+from tools.test_assert import AssertError, Asserter
 
 
 def assertReturnOk(res):
@@ -76,7 +73,7 @@ class CompletedProcessToto:
         return self
 
 
-class TestSuite:
+class TestSuite(Asserter):
     def __init__(self, name: str, d: str, bspath: str):
         self.__name = name
         self.__dir = d
