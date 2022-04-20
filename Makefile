@@ -41,3 +41,7 @@ build: $(ALLBINS)
 
 $(BINDIR)/%: $(SRC)
 	GO111MODULE=on go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/$(notdir $@)
+
+.PHONY: test
+test: build
+	python tests/runtest.py

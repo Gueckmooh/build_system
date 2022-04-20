@@ -1,11 +1,14 @@
 from tools.suite_builder import buildTestSuites, TestSuiteWrapper
 import inspect, os.path
 from pathlib import Path
+import sys
 
 
 def runtests(filenames, bspath):
     for tsw in buildTestSuites(filenames, bspath):
-        tsw.RunTests()
+        if not tsw.RunTests():
+            return False
+    return True
 
 
 def main():
@@ -14,13 +17,11 @@ def main():
     suitepath = os.path.join(basepath, "suites")
 
     bspath = os.path.join(os.path.dirname(basepath), "bin/bs")
-    print(bspath)
-
-    print("Getting tests suites from {}...".format(suitepath))
 
     testfiles = [str(n) for n in Path(suitepath).rglob("test*.py")]
 
-    runtests(testfiles, bspath)
+    if not runtests(testfiles, bspath):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

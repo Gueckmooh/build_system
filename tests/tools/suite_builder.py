@@ -9,7 +9,9 @@ class TestSuiteWrapper:
 
     def RunTests(self):
         for test in self.__testsToRun:
-            self.__testSuite.Run(test)
+            if not self.__testSuite.Run(test):
+                return False
+        return True
 
 
 def reconcileImports(imports):

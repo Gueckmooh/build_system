@@ -3,6 +3,35 @@ import glob
 import shutil
 import os.path
 import subprocess
+from colorama import Fore, Style
+
+
+class AssertError(Exception):
+    pass
+
+
+def assertReturnOk(res):
+    if res.returncode != 0:
+        raise AssertError(
+            "Execution failed with error code {}".format(res.returncode)
+        )
+
+
+class CompletedProcessToto:
+    def __init__(self, res):
+        self.__res = res
+
+    def mustBeOk(self):
+        if self.__res.returncode != 0:
+            raise AssertError(
+                "Execution failed with error code {} where it should succeed".format(
+                    res.returncode
+                )
+            )
+
+    def mustBeNOk(self):
+        if self.__res.returncode == 0:
+            raise AssertError("Execution succeeded where it should fail")
 
 
 class TestSuite:
@@ -14,12 +43,36 @@ class TestSuite:
     def BSPath(self):
         return self.__bspath
 
-    def Run(self, suiteName: str):
-        print(self.__name, suiteName)
-        getattr(self, suiteName)()
+    def Run(self, testName: str):
+        print(
+            "{}Running test {} from suite {}...{}".format(
+                Style.BRIGHT, testName, self.__name, Style.RESET_ALL
+            )
+        )
+        try:
+            getattr(self, testName)()
+        except AssertError as e:
+            print(e)
+            print(
+                "\t{}FAIL{}".format(
+                    Style.BRIGHT + Fore.RED, Style.RESET_ALL + Fore.RESET
+                )
+            )
+            return False
+        print(
+            "\t{}PASS{}".format(
+                Style.BRIGHT + Fore.GREEN, Style.RESET_ALL + Fore.RESET
+            )
+        )
+        return True
 
-    def runBSWithOptions(self, options):
-        return subprocess.run([self.BSPath()] + options)
+    def runBS(self, options):
+        res = subprocess.run(
+            [self.BSPath()] + options,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return CompletedProcessToto(res)
 
     # def sandbox(self):
     #     return Sandbox()
