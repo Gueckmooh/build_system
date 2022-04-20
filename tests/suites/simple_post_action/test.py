@@ -9,3 +9,9 @@ class SimplePostbuildActionSuite(TestSuite):
             self.AssertFileEqual(
                 ".build/bin/hello_exe", ".build/bin/new_hello_exe"
             )
+            self.runCmd(".build/bin/hello_exe").mustBeOk().stdoutMustContain(
+                "Hello, World!"
+            )
+            self.runCmd(
+                ".build/bin/new_hello_exe"
+            ).mustBeOk().stdoutMustContain("Hello, World!")

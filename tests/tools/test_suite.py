@@ -111,6 +111,14 @@ class TestSuite(Asserter):
         )
         return CompletedProcessToto(res)
 
+    def runCmd(self, options):
+        res = subprocess.run(
+            options,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return CompletedProcessToto(res)
+
     # def sandbox(self):
     #     return Sandbox()
 

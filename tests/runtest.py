@@ -17,6 +17,10 @@ def main():
     suitepath = os.path.join(basepath, "suites")
 
     bspath = os.path.join(os.path.dirname(basepath), "bin/bs")
+    if not os.path.exists(bspath):
+        print("Error while setup tests: could not find 'bs' bin.")
+        print("You must run 'make build' before running the tests.")
+        sys.exit(1)
 
     testfiles = [str(n) for n in Path(suitepath).rglob("test*.py")]
 
