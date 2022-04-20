@@ -44,4 +44,4 @@ $(BINDIR)/%: $(SRC)
 
 .PHONY: test
 test: build
-	python tests/runtest.py
+	python3 tests/runtest.py
