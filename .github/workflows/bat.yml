@@ -30,6 +30,11 @@ jobs:
       uses: logikal-code/pip-install@v1.0.0
       with:
         requirements: tests/requirements.txt
+        
+    - name: Setup GCC
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: 11.2.0
 
     - name: Build
       run: make build
