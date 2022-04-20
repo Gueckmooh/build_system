@@ -1,5 +1,7 @@
 -- The minimal configuration that shouls be handled by the first
 -- version of the build system.
+version "0.0.1"
+
 project = require "project"
 
 project:Name    "My Pretty Project"
