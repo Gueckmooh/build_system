@@ -305,3 +305,4 @@ cython_debug/
 /bin/
 .build/
 .ccls-cache/
+cmd/bs/bs
