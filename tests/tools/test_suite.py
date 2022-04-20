@@ -17,6 +17,18 @@ def assertReturnOk(res):
         )
 
 
+def getFail():
+    return "{}FAIL{}".format(
+        Style.BRIGHT + Fore.RED, Style.RESET_ALL + Fore.RESET
+    )
+
+
+def getPass():
+    return "{}PASS{}".format(
+        Style.BRIGHT + Fore.GREEN, Style.RESET_ALL + Fore.RESET
+    )
+
+
 class CompletedProcessToto:
     def __init__(self, res):
         self.__res = res
@@ -40,30 +52,27 @@ class TestSuite:
         self.__dir = d
         self.__bspath = bspath
 
+    def getName(self):
+        return self.__name
+
     def BSPath(self):
         return self.__bspath
 
     def Run(self, testName: str):
         print(
-            "{}Running test {} from suite {}...{}".format(
-                Style.BRIGHT, testName, self.__name, Style.RESET_ALL
-            )
+            "\tRunning test {}{}{}...".format(
+                Style.BRIGHT, testName, Style.RESET_ALL
+            ),
+            end="",
         )
         try:
             getattr(self, testName)()
         except AssertError as e:
+            print()
             print(e)
-            print(
-                "\t{}FAIL{}".format(
-                    Style.BRIGHT + Fore.RED, Style.RESET_ALL + Fore.RESET
-                )
-            )
+            print("\t" + getFail())
             return False
-        print(
-            "\t{}PASS{}".format(
-                Style.BRIGHT + Fore.GREEN, Style.RESET_ALL + Fore.RESET
-            )
-        )
+        print(" " + getPass())
         return True
 
     def runBS(self, options):

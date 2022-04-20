@@ -1,5 +1,6 @@
 import ast
 import os.path
+from colorama import Fore, Style
 
 
 class TestSuiteWrapper:
@@ -8,6 +9,11 @@ class TestSuiteWrapper:
         self.__testsToRun = testsToRun
 
     def RunTests(self):
+        print(
+            "Running suite {}{}{}...".format(
+                Style.BRIGHT, self.__testSuite.getName(), Style.RESET_ALL
+            )
+        )
         for test in self.__testsToRun:
             if not self.__testSuite.Run(test):
                 return False
