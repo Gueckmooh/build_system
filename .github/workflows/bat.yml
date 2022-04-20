@@ -11,18 +11,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout repository and submodules
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
 
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: 1.18
-      
-    - name: Checkout repository
-      uses: actions/checkout@master
-
-    - name: Checkout submodules
-      uses: textbook/git-checkout-submodule-action@master
 
     - name: Build
       run: make build
