@@ -19,6 +19,12 @@ class TestSuiteWrapper:
                 return False
         return True
 
+    def getSuiteName(self):
+        return self.__testSuite.getName()
+
+    def setVerbosity(self, v):
+        self.__testSuite.setVerbosity(v)
+
 
 def reconcileImports(imports):
     for i in imports:
