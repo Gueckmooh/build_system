@@ -42,6 +42,7 @@ build: $(ALLBINS)
 
 pkg/lua/luabslib/cppprofile_gen.go: ./pkg/lua/luabslib/cppprofile.go pkg/lua/luabslib/definitions/CPPProfile.xml $(wildcard pkg/lua/luabslib/gen/*.go)
 	go generate $<
+	go fmt $@
 
 $(BINDIR)/%: $(SRC)
 	GO111MODULE=on go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/$(notdir $@)
