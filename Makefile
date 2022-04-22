@@ -24,7 +24,7 @@ DEPDIR ?= .deps
 NOINC = clean, mrproper
 
 SRC := $(shell find pkg -type f -name '*.go' -print) $(shell find cmd -type f -name '*.go' -print) go.mod
-SRC += pkg/lua/luabslib/cppprofile_gen.go
+SRC += pkg/lua/luabslib/cppprofile_gen.go pkg/lua/luabslib/profile_gen.go
 
 ALLBINS := $(addprefix $(BINDIR)/, $(ALLBIN))
 
@@ -41,6 +41,10 @@ SHELL      = /usr/bin/env bash
 build: $(ALLBINS)
 
 pkg/lua/luabslib/cppprofile_gen.go: ./pkg/lua/luabslib/cppprofile.go pkg/lua/luabslib/definitions/CPPProfile.xml $(wildcard pkg/lua/luabslib/gen/*.go)
+	go generate $<
+	go fmt $@
+
+pkg/lua/luabslib/profile_gen.go: ./pkg/lua/luabslib/profile.go pkg/lua/luabslib/definitions/Profile.xml $(wildcard pkg/lua/luabslib/gen/*.go)
 	go generate $<
 	go fmt $@
 

@@ -26,7 +26,7 @@ const methodAppendTemplate = `func {{.MethodName}}(L *lua.LState) int {
 }
 `
 
-const totoTemplate = `var {{ .FuncMapName }} = map[string]lua.LGFunction{
+const luaFunctionMapTemplate = `var {{ .FuncMapName }} = map[string]lua.LGFunction{
 {{- range .Mappings }}
 	"{{ .LuaName }}": {{ .GoName }},
 {{- end }}
@@ -111,18 +111,19 @@ const checkTableIntegrityTemplate = `func {{.FuncName}}(L *lua.LState, T *lua.LT
 	return nil
 }`
 
-const newTableTemplate = `func {{.FuncName}}(L *lua.LState) *lua.LTable {
+const newTableTemplate = `func {{.FuncName}}({{.ParamsDecl}}) *lua.LTable {
 	table := L.SetFuncs(L.NewTable(), {{.FunctionMapping}})
 
-	{{ range .Fields}}
-		{{- genFieldInit . "table"}}
-	{{ end}}
+	{{genFieldsInit .Fields .Params "table"}}
 
 	return table
 }`
 
 const luaNewTableTemplate = `func {{.FuncName}}(L *lua.LState) int {
-	table := {{.NewFuncName}}(L)
+	{{.ParamGets}}
+	{{.ParamTypeChecks}}
+
+	table := {{.NewFuncName}}({{.ParamsUse}})
 
 	L.Push(table)
 
@@ -133,6 +134,16 @@ const getLuaStringFromTableFieldTemplate = `var {{.VarName}} string
 {
 	__luaFieldValue := L.GetField({{.TableName}}, "{{.FieldName}}")
 	{{.VarName}} = __luaFieldValue.String()
+}`
+
+const getLuaObjectFromTableFieldTemplate = `var {{.VarName}} *{{.VarType}}
+{
+	__luaFieldValue := L.GetField({{.TableName}}, "{{.FieldName}}")
+	var err error
+	{{.VarName}}, err = {{.ConverterName}}(L, __luaFieldValue.(*lua.LTable))
+	if err != nil {
+		return nil, err
+	}
 }`
 
 const getLuaStringFromValueTemplate = `{{.VarName}} := {{.LuaVarName}}.String()`
@@ -182,8 +193,8 @@ const publicConvertTableTemplate = `func {{.FuncName}}(L *lua.LState, T *lua.LTa
 	return &publicTable, nil
 }`
 
-const publicNewTableTemplate = `func {{.FuncName}}(L *lua.LState) *lua.LTable {
-	return {{.NewTable}}(L)
+const publicNewTableTemplate = `func {{.FuncName}}({{.ParamsDecl}}) *lua.LTable {
+	return {{.NewTable}}({{.ParamsUse}})
 }`
 
 const publicLuaNewTableTemplate = `func {{.FuncName}}(L *lua.LState) int {
@@ -199,6 +210,11 @@ func luaTypeToGoType(ty string) string {
 		if typeIsTable(ty) {
 			return fmt.Sprintf("[]%s", luaTypeToGoType(getInnerType(ty)))
 		}
+		for _, dep := range Dependencies {
+			if ty == dep.TableName {
+				return "*" + dep.TableTypeName
+			}
+		}
 		return ""
 	}
 }
@@ -210,4 +226,16 @@ func snakeCaseToCamelCase(s string) string {
 		nsubs = append(nsubs, strings.ToUpper(string(s[0]))+s[1:])
 	}
 	return strings.Join(nsubs, "")
+}
+
+func luaTypeToLuaGoType(ty string) string {
+	switch ty {
+	case "String":
+		return "lua.LString"
+	default:
+		if typeIsTable(ty) {
+			return "lua.LTable"
+		}
+		return ""
+	}
 }

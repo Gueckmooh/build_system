@@ -69,11 +69,12 @@ func NewComponent(L *lua.LState, name string) *lua.LTable {
 	L.SetField(table, "_prebuild_actions_", L.NewTable())
 	L.SetField(table, "_postbuild_actions_", L.NewTable())
 
-	profile, profileMap := NewProfile(L, "Default")
+	profile := NewProfile(L, "Default")
 	L.SetField(table, "_base_profile_", profile)
-	for k, v := range profileMap {
-		L.SetField(table, k, v)
-	}
+	// for k, v := range profileMap {
+	// 	L.SetField(table, k, v)
+	// }
+	L.SetField(table, "CPP", GetLuaCPPProfile(L, profile))
 	L.SetField(table, "_profiles_", L.NewTable())
 	L.SetField(table, "_platforms_", L.NewTable())
 

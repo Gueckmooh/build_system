@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 
 	"github.com/gueckmooh/bs/pkg/argparse"
 )
@@ -17,20 +18,38 @@ type Method struct {
 }
 
 type Field struct {
-	Name    string `xml:"name,attr"`
-	Type    string `xml:"type,attr"`
-	Private bool   `xml:"private,attr"`
+	Name             string `xml:"name,attr"`
+	Type             string `xml:"type,attr"`
+	Private          bool   `xml:"private,attr"`
+	DefaultFromParam int    `xml:"default_from_param,attr"`
+}
+
+type Constructor struct {
+	Type string `xml:"type,attr"`
 }
 
 type Table struct {
 	XMLName xml.Name `xml:"table"`
-	Name    string   `xml:"name,attr"`
-	Methods struct {
-		Method []Method `xml:"method"`
-	} `xml:"methods"`
-	Fields struct {
-		Field []Field `xml:"field"`
-	} `xml:"fields"`
+	Require []struct {
+		Name string `xml:"name,attr"`
+	} `xml:"require"`
+	Constructor *Constructor `xml:"constructor"`
+	Name        string       `xml:"name,attr"`
+	Methods     []Method     `xml:"methods>method"`
+	Fields      []Field      `xml:"fields>field"`
+}
+
+func readXMLFile(filename string) (*Table, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	var t Table
+	err = xml.Unmarshal(data, &t)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
 }
 
 func tryMain() error {
@@ -56,16 +75,20 @@ func tryMain() error {
 		return err
 	}
 
-	data, err := ioutil.ReadFile(*inputFile)
-	if err != nil {
-		return err
+	t, err := readXMLFile(*inputFile)
+
+	for _, req := range t.Require {
+		path := path.Join(path.Dir(*inputFile), req.Name)
+		tt, err := readXMLFile(path)
+		if err != nil {
+			return err
+		}
+		treq := NewTableGenerator(tt)
+		Dependencies = append(Dependencies, treq)
 	}
-	var t Table
-	err = xml.Unmarshal(data, &t)
-	if err != nil {
-		return err
-	}
-	tg := NewTableGenerator(&t, WithPackageName(*packageName), WithPublicInterface(*publicInterfaceName))
+
+	tg := NewTableGenerator(t, WithPackageName(*packageName), WithPublicInterface(*publicInterfaceName))
+
 	if len(*outputFile) > 0 {
 		err := ioutil.WriteFile(*outputFile, []byte(tg.GenFile()), 0o600)
 		if err != nil {

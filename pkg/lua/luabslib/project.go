@@ -34,7 +34,7 @@ func luaGetOrCreateProfile(L *lua.LState) int {
 	profiles := vprofiles.(*lua.LTable)
 	vprof := L.GetField(profiles, name)
 	if vprof.Type() == lua.LTNil { // Create profile
-		prof, _ := NewProfile(L, name)
+		prof := NewProfile(L, name)
 		L.SetField(profiles, name, prof)
 		L.Push(prof)
 		return 1
@@ -77,7 +77,7 @@ func luaGetOrCreatePlatform(L *lua.LState) int {
 	profiles := vprofiles.(*lua.LTable)
 	vprof := L.GetField(profiles, name)
 	if vprof.Type() == lua.LTNil { // Create profile
-		prof, _ := NewProfile(L, name)
+		prof := NewProfile(L, name)
 		L.SetField(profiles, name, prof)
 		L.Push(prof)
 		return 1
@@ -108,7 +108,7 @@ func luaDeclarePlatforms(L *lua.LState) int {
 	for _, name := range names {
 		vplat := L.GetField(platforms, name)
 		if vplat.Type() == lua.LTNil { // Create profile
-			prof, _ := NewProfile(L, name)
+			prof := NewProfile(L, name)
 			L.SetField(platforms, name, prof)
 			return 0
 		}
@@ -125,11 +125,12 @@ func ProjectLoader(L *lua.LState) int {
 	L.SetField(mod, "_sources_", lua.LNil)
 	L.SetField(mod, "_default_target_", lua.LNil)
 
-	profile, profileMap := NewProfile(L, "Default")
+	profile := NewProfile(L, "Default")
 	L.SetField(mod, "_base_profile_", profile)
-	for k, v := range profileMap {
-		L.SetField(mod, k, v)
-	}
+	// for k, v := range profileMap {
+	// 	L.SetField(mod, k, v)
+	// }
+	L.SetField(mod, "CPP", GetLuaCPPProfile(L, profile))
 	L.SetField(mod, "_profiles_", L.NewTable())
 
 	L.SetField(mod, "_default_profile_", lua.LNil)

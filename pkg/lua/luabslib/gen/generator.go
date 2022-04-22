@@ -8,12 +8,21 @@ import (
 	"text/template"
 )
 
+const (
+	NoDefaultType int = iota
+	DefaultFromParamType
+)
+
+var Dependencies []*TableGenerator
+
 type FieldDescriptor struct {
-	Name       string
-	GoName     string
-	Type       string
-	GoType     string
-	GetterName string
+	Name             string
+	GoName           string
+	Type             string
+	GoType           string
+	GetterName       string
+	DefaultType      int
+	DefaultFromParam int
 }
 
 func NewFieldDescriptor(f *Field) *FieldDescriptor {
@@ -23,12 +32,36 @@ func NewFieldDescriptor(f *Field) *FieldDescriptor {
 	} else {
 		name = f.Name
 	}
+	defaultType := 0
+	defaultFromParam := 0
+	if f.DefaultFromParam != 0 {
+		defaultFromParam = f.DefaultFromParam
+		defaultType = DefaultFromParamType
+	}
 	return &FieldDescriptor{
-		Name:       name,
-		GoName:     fmt.Sprintf("__v%s", f.Name),
-		Type:       f.Type,
-		GoType:     luaTypeToGoType(f.Type),
-		GetterName: fmt.Sprintf("get%s", snakeCaseToCamelCase(f.Name)),
+		Name:             name,
+		GoName:           fmt.Sprintf("__v%s", f.Name),
+		Type:             f.Type,
+		GoType:           luaTypeToGoType(f.Type),
+		GetterName:       fmt.Sprintf("get%s", snakeCaseToCamelCase(f.Name)),
+		DefaultType:      defaultType,
+		DefaultFromParam: defaultFromParam,
+	}
+}
+
+type ParamDescriptor struct {
+	LuaType string
+	GoType  string
+	Name    string
+}
+
+func NewParamDescriptor(ty, name string) *ParamDescriptor {
+	luaType := ty
+	goType := luaTypeToGoType(ty)
+	return &ParamDescriptor{
+		LuaType: luaType,
+		GoType:  goType,
+		Name:    name,
 	}
 }
 
@@ -51,6 +84,27 @@ func NewMethodDescriptor(m *Method, tableName string) *MethodDescriptor {
 	}
 }
 
+type ConstructorDescription struct {
+	NParams int
+	Params  []*ParamDescriptor
+}
+
+func NewConstructorDescription(c *Constructor) *ConstructorDescription {
+	if c == nil {
+		return nil
+	}
+	types := strings.Split(c.Type, ",")
+	nparams := len(types)
+	var params []*ParamDescriptor
+	for n, ty := range types {
+		params = append(params, NewParamDescriptor(ty, fmt.Sprintf("__p%d", n)))
+	}
+	return &ConstructorDescription{
+		NParams: nparams,
+		Params:  params,
+	}
+}
+
 type TableGenerator struct {
 	TableName                     string
 	LuaMappingName                string
@@ -67,6 +121,7 @@ type TableGenerator struct {
 	PublicConvertTableFromLuaName string
 	Fields                        map[string]*FieldDescriptor
 	Methods                       map[string]*MethodDescriptor
+	Constructor                   *ConstructorDescription
 }
 
 type TableGeneratorOption func(*TableGenerator)
@@ -100,11 +155,12 @@ func NewTableGenerator(t *Table, opts ...TableGeneratorOption) *TableGenerator {
 		PublicConvertTableFromLuaName: "",
 		Fields:                        make(map[string]*FieldDescriptor),
 		Methods:                       make(map[string]*MethodDescriptor),
+		Constructor:                   NewConstructorDescription(t.Constructor),
 	}
-	for _, field := range t.Fields.Field {
+	for _, field := range t.Fields {
 		tg.Fields[field.Name] = NewFieldDescriptor(&field)
 	}
-	for _, method := range t.Methods.Method {
+	for _, method := range t.Methods {
 		tg.Methods[method.Name] = NewMethodDescriptor(&method, t.Name)
 	}
 	for _, opt := range opts {
@@ -119,6 +175,13 @@ func NewTableGenerator(t *Table, opts ...TableGeneratorOption) *TableGenerator {
 	return tg
 }
 
+func (tg *TableGenerator) GetConstructorParams() []*ParamDescriptor {
+	if tg.Constructor == nil {
+		return nil
+	}
+	return tg.Constructor.Params
+}
+
 func (tg *TableGenerator) FieldExists(name string) bool {
 	_, ok := tg.Fields[name]
 	return ok
@@ -129,7 +192,7 @@ func (tg *TableGenerator) GetField(name string) *FieldDescriptor {
 }
 
 func genTypeCheckCond(typesString string, varName string) string {
-	types := strings.Split(typesString, ",")
+	types := strings.Split(typesString, "|")
 	var typesToCheck []string
 	for _, t := range types {
 		switch t {
@@ -139,6 +202,12 @@ func genTypeCheckCond(typesString string, varName string) string {
 			if typeIsTable(t) {
 				typesToCheck = append(typesToCheck, "lua.LTTable")
 			} else {
+				for _, dep := range Dependencies {
+					if t == dep.TableName {
+						// @todo maybe not return here
+						return fmt.Sprintf("%s(L, %s.(*lua.LTable)) != nil", dep.TableIntegrityCheckerName, varName)
+					}
+				}
 				panic(fmt.Sprintf("genTypeCheckCond: unhandled type %s", t))
 			}
 		}
@@ -155,26 +224,58 @@ var templateFuncMap = template.FuncMap{
 	"genTypeCheckError": genTypeCheckError,
 	"genAppendForTypes": genAppendForTypes,
 	"genFieldInit":      genFieldInit,
+	"genFieldsInit":     genFieldsInit,
 	"print":             func(s ...string) string { return fmt.Sprintf("%s", strings.Join(s, " -- ")) },
 }
 
-func genFieldInit(field *FieldDescriptor, tableName string) string {
-	var linit string
-	switch field.Type {
+func getDefaultValueForType(ty string) string {
+	switch ty {
 	case "String":
-		linit = "lua.LString(\"\")"
+		return `lua.LString("")`
 	default:
-		if typeIsTable(field.Type) {
-			linit = "L.NewTable()"
-		} else {
-			panic("Unhandled type")
+		if typeIsTable(ty) {
+			return `L.NewTable()`
 		}
+		for _, deps := range Dependencies {
+			if deps.TableName == ty {
+				return fmt.Sprintf("%s(L)", deps.NewTableName)
+			}
+		}
+		panic("Unhandled type")
 	}
+}
+
+func getDefaultValue(field *FieldDescriptor, params []*ParamDescriptor) string {
+	switch field.DefaultType {
+	case DefaultFromParamType:
+		if field.DefaultFromParam > len(params) {
+			panic(fmt.Sprintf("Cannot index param %d for field %s", field.DefaultFromParam, field.Name))
+		}
+		param := params[field.DefaultFromParam-1]
+		if param.LuaType != field.Type {
+			panic(fmt.Sprintf("Incompatible types %s and %s for field %s", field.Type, param.LuaType, field.Name))
+		}
+		return param.Name
+	default:
+		return getDefaultValueForType(field.Type)
+	}
+}
+
+func genFieldInit(field *FieldDescriptor, params []*ParamDescriptor, tableName string) string {
+	linit := getDefaultValue(field, params)
 	return fmt.Sprintf(`L.SetField(%s, "%s", %s)`, tableName, field.Name, linit)
 }
 
+func genFieldsInit(fields []*FieldDescriptor, params []*ParamDescriptor, tableName string) string {
+	var inits []string
+	for _, field := range fields {
+		inits = append(inits, genFieldInit(field, params, tableName))
+	}
+	return strings.Join(inits, "\n")
+}
+
 func genAppendForTypes(typesString string, varName string, tabName string) string {
-	types := strings.Split(typesString, ",")
+	types := strings.Split(typesString, "|")
 	var appenders []string
 	for _, t := range types {
 		var temp string
@@ -349,7 +450,7 @@ func typeIsTable(t string) bool {
 }
 
 func typesHasTable(types string) bool {
-	for _, t := range strings.Split(types, ",") {
+	for _, t := range strings.Split(types, "|") {
 		if typeIsTable(t) {
 			return true
 		}
@@ -358,7 +459,7 @@ func typesHasTable(types string) bool {
 }
 
 func getInnerType(types string) string {
-	for _, t := range strings.Split(types, ",") {
+	for _, t := range strings.Split(types, "|") {
 		if typeIsTable(t) {
 			return tableTypeRe.FindAllStringSubmatch(t, -1)[0][1]
 		}
@@ -438,20 +539,39 @@ func (tg *TableGenerator) GenNewTable() string {
 	for _, v := range tg.Fields {
 		fields = append(fields, v)
 	}
+	paramDecls := []string{"L *lua.LState"}
+	if tg.Constructor != nil {
+		for _, param := range tg.Constructor.Params {
+			paramDecls = append(paramDecls, fmt.Sprintf("%s *%s", param.Name,
+				luaTypeToLuaGoType(param.LuaType)))
+		}
+	}
 	var buff bytes.Buffer
 	err = t.Execute(&buff, struct {
 		FuncName        string
 		Fields          []*FieldDescriptor
 		FunctionMapping string
+		ParamsDecl      string
+		Params          []*ParamDescriptor
 	}{
 		FuncName:        tg.NewTableName,
 		Fields:          fields,
 		FunctionMapping: tg.LuaMappingName,
+		ParamsDecl:      strings.Join(paramDecls, ", "),
+		Params:          tg.GetConstructorParams(),
 	})
 	if err != nil {
 		panic(err.Error())
 	}
 	return buff.String()
+}
+
+func genParamGets(params []*ParamDescriptor) []string {
+	var gets []string
+	for n, param := range params {
+		gets = append(gets, fmt.Sprintf("%s := L.Get(%d)", param.Name, n+1))
+	}
+	return gets
 }
 
 func (tg *TableGenerator) GenLuaNewTable() string {
@@ -463,13 +583,36 @@ func (tg *TableGenerator) GenLuaNewTable() string {
 	for _, v := range tg.Fields {
 		fields = append(fields, v)
 	}
+	var paramTypeChecks []string
+	if tg.Constructor != nil {
+		for _, param := range tg.Constructor.Params {
+			paramTypeChecks = append(paramTypeChecks, genTypeCheck(param.LuaType, param.Name))
+		}
+	}
+	paramUse := []string{"L"}
+	if tg.Constructor != nil {
+		for _, param := range tg.Constructor.Params {
+			switch param.LuaType {
+			case "String":
+				paramUse = append(paramUse, fmt.Sprintf("%s.(*lua.LString)", param.Name))
+			default:
+				panic(fmt.Sprintf("GenLuaNewTable: unhandled type %s", param.LuaType))
+			}
+		}
+	}
 	var buff bytes.Buffer
 	err = t.Execute(&buff, struct {
-		FuncName    string
-		NewFuncName string
+		FuncName        string
+		NewFuncName     string
+		ParamGets       string
+		ParamTypeChecks string
+		ParamsUse       string
 	}{
-		FuncName:    tg.LuaNewTableName,
-		NewFuncName: tg.NewTableName,
+		FuncName:        tg.LuaNewTableName,
+		NewFuncName:     tg.NewTableName,
+		ParamGets:       strings.Join(genParamGets(tg.GetConstructorParams()), "\n"),
+		ParamTypeChecks: strings.Join(paramTypeChecks, "\n"),
+		ParamsUse:       strings.Join(paramUse, ", "),
 	})
 	if err != nil {
 		panic(err.Error())
@@ -492,7 +635,7 @@ func (tg *TableGenerator) GenLuaMappingTable() string {
 		})
 	}
 	var buff bytes.Buffer
-	t, err := template.New("luaMapping").Parse(totoTemplate)
+	t, err := template.New("luaMapping").Parse(luaFunctionMapTemplate)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -526,6 +669,31 @@ func genGetGoStringFromLuaField(varName, fieldName, tableName string) string {
 		VarName:   varName,
 		TableName: tableName,
 		FieldName: fieldName,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return buff.String()
+}
+
+func genGetGoObjectFromLuaField(varName, fieldName, tableName, objConverter, objType string) string {
+	t, err := template.New("genGetGoObjectFromLuaField").Parse(getLuaObjectFromTableFieldTemplate)
+	if err != nil {
+		panic(err)
+	}
+	var buff bytes.Buffer
+	err = t.Execute(&buff, struct {
+		VarName       string
+		TableName     string
+		FieldName     string
+		ConverterName string
+		VarType       string
+	}{
+		VarName:       varName,
+		TableName:     tableName,
+		FieldName:     fieldName,
+		ConverterName: objConverter,
+		VarType:       objType,
 	})
 	if err != nil {
 		panic(err)
@@ -586,6 +754,13 @@ func genGetGoValueFromLuaField(varName, fieldName, tableName, luaType string) st
 	default:
 		if typeIsTable(luaType) {
 			return genGetGoTableFromLuaField(varName, fieldName, tableName, getInnerType(luaType))
+		}
+		// @todo
+		for _, dep := range Dependencies {
+			if luaType == dep.TableName {
+				return genGetGoObjectFromLuaField(varName, fieldName, tableName, dep.ConvertTableFromLuaName,
+					dep.TableTypeName)
+			}
 		}
 		panic(fmt.Sprintf("genGetGoValueFromLuaField: Unhandled type %s", luaType))
 	}
@@ -725,13 +900,26 @@ func (tg *TableGenerator) GenPublicNewTable() string {
 		if err != nil {
 			panic(err)
 		}
+		paramDecls := []string{"L *lua.LState"}
+		paramUse := []string{"L"}
+		if tg.Constructor != nil {
+			for _, param := range tg.Constructor.Params {
+				paramDecls = append(paramDecls, fmt.Sprintf("%s *%s", param.Name,
+					luaTypeToLuaGoType(param.LuaType)))
+				paramUse = append(paramUse, param.Name)
+			}
+		}
 		var buff bytes.Buffer
 		err = t.Execute(&buff, struct {
-			FuncName string
-			NewTable string
+			FuncName   string
+			NewTable   string
+			ParamsDecl string
+			ParamsUse  string
 		}{
-			FuncName: tg.PublicNewTableName,
-			NewTable: tg.NewTableName,
+			FuncName:   tg.PublicNewTableName,
+			NewTable:   tg.NewTableName,
+			ParamsDecl: strings.Join(paramDecls, ", "),
+			ParamsUse:  strings.Join(paramUse, ", "),
 		})
 		if err != nil {
 			panic(err)

@@ -1,8 +1,8 @@
 <table name="cppprofile">
   <methods>
     <method name="Dialect" kind="Setter" type="String" target="dialect"/>
-    <method name="AddBuildOptions" kind="Append" type="String,Table(String)" target="build_options"/>
-    <method name="AddLinkOptions" kind="Append" type="String,Table(String)" target="link_options"/>
+    <method name="AddBuildOptions" kind="Append" type="String|Table(String)" target="build_options"/>
+    <method name="AddLinkOptions" kind="Append" type="String|Table(String)" target="link_options"/>
   </methods>
   <fields>
     <field name="dialect" type="String" private="true"/>

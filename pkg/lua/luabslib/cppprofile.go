@@ -23,3 +23,12 @@ func ReadCPPProfileFromLuaTable(L *lua.LState, T *lua.LTable) (*project.CPPProfi
 	cpp.SetDialectFromString(v.getDialect())
 	return cpp, nil
 }
+
+func LuaCPPProfileToCPPProfile(v *LuaCPPProfile) *project.CPPProfile {
+	cpp := &project.CPPProfile{
+		BuildOptions: v.getBuildOptions(),
+		LinkOptions:  v.getLinkOptions(),
+	}
+	cpp.SetDialectFromString(v.getDialect())
+	return cpp
+}
