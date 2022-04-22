@@ -1,4 +1,4 @@
-package lua
+package luabslib
 
 import (
 	"fmt"
@@ -271,13 +271,4 @@ func ReadProjectFromLuaState(L *lua.LState) (*project.Project, error) {
 	}
 
 	return proj, nil
-}
-
-func (C *LuaContext) ReadProjectFile(filename string) (*project.Project, error) {
-	if err := C.L.DoFile(filename); err != nil {
-		return nil, fmt.Errorf("Error while executing file '%s':\n\t%s",
-			filename, err.Error())
-	}
-
-	return ReadProjectFromLuaState(C.L)
 }

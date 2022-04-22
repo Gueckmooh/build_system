@@ -1,4 +1,4 @@
-package lua
+package luabslib
 
 import (
 	"fmt"

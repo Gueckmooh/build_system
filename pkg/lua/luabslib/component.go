@@ -1,4 +1,4 @@
-package lua
+package luabslib
 
 import (
 	"fmt"
@@ -63,7 +63,7 @@ func NewComponent(L *lua.LState, name string) *lua.LTable {
 	L.SetField(table, "_type_", lua.LNil)
 	L.SetField(table, "_languages_", lua.LNil)
 	L.SetField(table, "_sources_", lua.LNil)
-	L.SetField(table, "_path_", lua.LString(filepath.Dir(currentComponentFile)))
+	L.SetField(table, "_path_", lua.LString(filepath.Dir(CurrentComponentFile)))
 	L.SetField(table, "_exported_headers_", lua.LNil)
 	L.SetField(table, "_requires_", lua.LNil)
 	L.SetField(table, "_prebuild_actions_", L.NewTable())
@@ -271,27 +271,4 @@ func ReadComponentsFromLuaState(L *lua.LState) ([]*project.Component, error) {
 	return components, nil
 }
 
-var currentComponentFile = ""
-
-func (C *LuaContext) ReadComponentFile(filename string) error {
-	currentComponentFile = filename
-	if err := C.L.DoFile(filename); err != nil {
-		currentComponentFile = ""
-		return fmt.Errorf("Error while executing file '%s':\n\t%s",
-			filename, err.Error())
-	}
-	currentComponentFile = ""
-
-	return nil
-}
-
-func (C *LuaContext) ReadComponentFiles(filenames []string) ([]*project.Component, error) {
-	err := functional.ListTryApply(filenames,
-		func(s string) error {
-			return C.ReadComponentFile(s)
-		})
-	if err != nil {
-		return nil, fmt.Errorf("Error while loading components:\n\t%s", err.Error())
-	}
-	return ReadComponentsFromLuaState(C.L)
-}
+var CurrentComponentFile = ""
