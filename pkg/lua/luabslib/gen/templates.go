@@ -69,7 +69,7 @@ import (
 `
 
 const typeCheckTemplate = `if {{ genTypeCheckCond .VarType .VarName }} {
-	fmt.Printf("Unknown type %s", {{.VarName}}.Type().String())
+	fmt.Printf("Incorrect type %s\n", {{.VarName}}.Type().String())
 	L.Panic(L)
 }`
 
