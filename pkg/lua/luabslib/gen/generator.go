@@ -8,21 +8,32 @@ import (
 	"text/template"
 )
 
-const (
-	NoDefaultType int = iota
-	DefaultFromParamType
-)
+type DefaultValue interface{}
+
+type DefaultFromParam struct {
+	ParamId int
+}
+
+type NoDefault struct{}
 
 var Dependencies []*TableGenerator
 
 type FieldDescriptor struct {
-	Name             string
-	GoName           string
-	Type             string
-	GoType           string
-	GetterName       string
-	DefaultType      int
-	DefaultFromParam int
+	Name         string
+	GoName       string
+	Type         string
+	GoType       string
+	GetterName   string
+	DefaultValue DefaultValue
+}
+
+func NewDefaultValue(f *Field) DefaultValue {
+	if f.DefaultFromParam != 0 {
+		return &DefaultFromParam{
+			ParamId: f.DefaultFromParam,
+		}
+	}
+	return &NoDefault{}
 }
 
 func NewFieldDescriptor(f *Field) *FieldDescriptor {
@@ -32,20 +43,19 @@ func NewFieldDescriptor(f *Field) *FieldDescriptor {
 	} else {
 		name = f.Name
 	}
-	defaultType := 0
-	defaultFromParam := 0
-	if f.DefaultFromParam != 0 {
-		defaultFromParam = f.DefaultFromParam
-		defaultType = DefaultFromParamType
-	}
+	// defaultType := 0
+	// defaultFromParam := 0
+	// if f.DefaultFromParam != 0 {
+	// 	defaultFromParam = f.DefaultFromParam
+	// 	defaultType = DefaultFromParamType
+	// }
 	return &FieldDescriptor{
-		Name:             name,
-		GoName:           fmt.Sprintf("__v%s", f.Name),
-		Type:             f.Type,
-		GoType:           luaTypeToGoType(f.Type),
-		GetterName:       fmt.Sprintf("get%s", snakeCaseToCamelCase(f.Name)),
-		DefaultType:      defaultType,
-		DefaultFromParam: defaultFromParam,
+		Name:         name,
+		GoName:       fmt.Sprintf("__v%s", f.Name),
+		Type:         f.Type,
+		GoType:       luaTypeToGoType(f.Type),
+		GetterName:   fmt.Sprintf("get%s", snakeCaseToCamelCase(f.Name)),
+		DefaultValue: NewDefaultValue(f),
 	}
 }
 
@@ -246,16 +256,18 @@ func getDefaultValueForType(ty string) string {
 }
 
 func getDefaultValue(field *FieldDescriptor, params []*ParamDescriptor) string {
-	switch field.DefaultType {
-	case DefaultFromParamType:
-		if field.DefaultFromParam > len(params) {
-			panic(fmt.Sprintf("Cannot index param %d for field %s", field.DefaultFromParam, field.Name))
+	switch def := field.DefaultValue.(type) {
+	case *DefaultFromParam:
+		if def.ParamId > len(params) {
+			panic(fmt.Sprintf("Cannot index param %d for field %s", def.ParamId, field.Name))
 		}
-		param := params[field.DefaultFromParam-1]
+		param := params[def.ParamId-1]
 		if param.LuaType != field.Type {
 			panic(fmt.Sprintf("Incompatible types %s and %s for field %s", field.Type, param.LuaType, field.Name))
 		}
 		return param.Name
+	case *NoDefault:
+		return getDefaultValueForType(field.Type)
 	default:
 		return getDefaultValueForType(field.Type)
 	}
