@@ -269,13 +269,6 @@ func genFieldInit(field *FieldDescriptor, params []*ParamDescriptor, tableName s
 }
 
 func genFieldsInit(fields []*FieldDescriptor, params []*ParamDescriptor, tableName string) string {
-	for _, f := range fields {
-		fmt.Println(f)
-	}
-	for _, p := range params {
-		fmt.Println(p)
-	}
-
 	var inits []string
 	for _, field := range fields {
 		inits = append(inits, genFieldInit(field, params, tableName))

@@ -91,7 +91,6 @@ func NewCustomTypeDescriptor(tg *TableGenerator) *CustomTypeDescriptor {
 		TableIntegrityFunc: tg.TableIntegrityCheckerName,
 		ConverterFunc:      tg.ConvertTableFromLuaName,
 	}
-	fmt.Printf("%#v\n", res)
 	return res
 }
 

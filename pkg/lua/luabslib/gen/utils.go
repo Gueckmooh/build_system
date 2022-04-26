@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"text/template"
 )
 
@@ -20,7 +19,6 @@ func ExecuteTemplate(name string, temp string, funcs template.FuncMap, data any)
 }
 
 func MustExecuteTemplate(name string, temp string, funcs template.FuncMap, data any) string {
-	fmt.Println("Running template", name)
 	t, err := template.New(name).Funcs(funcs).Parse(temp)
 	if err != nil {
 		panic(err)
