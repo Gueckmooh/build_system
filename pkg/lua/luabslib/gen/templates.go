@@ -68,7 +68,7 @@ import (
 {{- end }}
 `
 
-const typeCheckTemplate = `if {{ genTypeCheckCond .VarType .VarName }} {
+const typeCheckTemplate = `if {{ genTypeCheckCond .VarTypes .VarName }} {
 	fmt.Printf("Incorrect type %s\n", {{.VarName}}.Type().String())
 	L.Panic(L)
 }`
@@ -79,7 +79,7 @@ const tableTypeCheckTemplate = `if {{.VarName}}.Type() == lua.LTTable {
 	})
 }`
 
-const typeCheckErrorTemplate = `if {{ genTypeCheckCond .VarType .VarName }} {
+const typeCheckErrorTemplate = `if {{ genTypeCheckCond .VarTypes .VarName }} {
 	{{.ErrName}} = fmt.Errorf("Unknown type %s", {{.VarName}}.Type().String())
 }`
 
@@ -87,7 +87,7 @@ const tableTypeCheckErrorTemplate = `if {{.VarName}}.Type() == lua.LTTable {
 	var err error
 	L.ForEach({{.VarName}}.(*lua.LTable), func (_, v lua.LValue) {
 		var locError error
-		{{ genTypeCheckError .VarType "v" "locError" }}
+		{{ genTypeCheckError .VarTypes "v" "locError" }}
 		if err == nil {
 			err = locError
 		}
@@ -102,7 +102,7 @@ const checkTableIntegrityTemplate = `func {{.FuncName}}(L *lua.LState, T *lua.LT
 	{
 		value := L.GetField(T, "{{.Name}}")
 		var err error
-		{{genTypeCheckError .Type "value" "err"}}
+		{{genTypeCheckError .Types "value" "err"}}
 		if err != nil {
 			return err
 		}
@@ -136,7 +136,7 @@ const getLuaStringFromTableFieldTemplate = `var {{.VarName}} string
 	{{.VarName}} = __luaFieldValue.String()
 }`
 
-const getLuaObjectFromTableFieldTemplate = `var {{.VarName}} *{{.VarType}}
+const getLuaObjectFromTableFieldTemplate = `var {{.VarName}} {{.VarType}}
 {
 	__luaFieldValue := L.GetField({{.TableName}}, "{{.FieldName}}")
 	var err error
@@ -153,7 +153,7 @@ const getLuaTableFromTableFieldTemplate = `var {{.VarName}} []{{.GoType}}
 	__luaFieldValue := L.GetField({{.TableName}}, "{{.FieldName}}")
 	__luaFieldTable := __luaFieldValue.(*lua.LTable)
 	L.ForEach(__luaFieldTable, func(_, v lua.LValue) {
-		{{genGetGoValueFromValue "__subField" "v" .LuaType }}
+		{{genGetGoValueFromValue "__subField" "v" .Type }}
 		{{.VarName}} = append({{.VarName}}, __subField)
 	})
 }`
@@ -170,7 +170,7 @@ const tableConversionTemplate = `func {{.FuncName}}(L *lua.LState, T *lua.LTable
 		return nil, err
 	}
 	{{- range .Fields }}
-		{{genGetGoValueFromLuaField .GoName .Name "T" .Type}}
+		{{genGetGoValueFromLuaField .GoName .Name "T" .Types}}
 	{{- end }}
 
 	return &{{.TypeName}}{
@@ -228,14 +228,14 @@ func snakeCaseToCamelCase(s string) string {
 	return strings.Join(nsubs, "")
 }
 
-func luaTypeToLuaGoType(ty string) string {
-	switch ty {
-	case "String":
-		return "lua.LString"
-	default:
-		if typeIsTable(ty) {
-			return "lua.LTable"
-		}
-		return ""
-	}
-}
+// func luaTypeToLuaGoType(ty string) string {
+// 	switch ty {
+// 	case "String":
+// 		return "lua.LString"
+// 	default:
+// 		if typeIsTable(ty) {
+// 			return "lua.LTable"
+// 		}
+// 		return ""
+// 	}
+// }
