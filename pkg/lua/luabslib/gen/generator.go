@@ -703,22 +703,18 @@ func (tg *TableGenerator) GenConverterFromLuaTable() string {
 		})
 }
 
-func genTypeDefField(f *FieldDescriptor) string {
+func (f *FieldDescriptor) GenTypeDefField() string {
 	return fmt.Sprintf("%s %s", f.GoName, f.Types.GoType())
 }
 
 func (tg *TableGenerator) GenTableTypeDefinition() string {
-	return MustExecuteTemplate("GenTableTypeDefinition", tableTypeDefTemplate,
-		template.FuncMap{
-			"genTypeDefField": genTypeDefField,
-		},
-		struct {
-			TypeName string
-			Fields   []*FieldDescriptor
-		}{
-			TypeName: tg.TableTypeName,
-			Fields:   tg.Fields.List(),
-		})
+	return MustExecuteTemplate("GenTableTypeDefinition",
+		`type {{.TableTypeName}} struct {
+	{{- range .Fields.List }}
+		{{.GenTypeDefField}}
+	{{- end }}
+}`,
+		template.FuncMap{}, tg)
 }
 
 func (tg *TableGenerator) GenPublicTableTypeDefinition() string {

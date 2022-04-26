@@ -158,12 +158,6 @@ const getLuaTableFromTableFieldTemplate = `var {{.VarName}} []{{.GoType}}
 	})
 }`
 
-const tableTypeDefTemplate = `type {{.TypeName}} struct {
-	{{- range .Fields }}
-		{{genTypeDefField .}}
-	{{- end }}
-}`
-
 const tableConversionTemplate = `func {{.FuncName}}(L *lua.LState, T *lua.LTable) (*{{.TypeName}}, error) {
 	err := {{.CheckIntegrity}}(L, T)
 	if err != nil {
