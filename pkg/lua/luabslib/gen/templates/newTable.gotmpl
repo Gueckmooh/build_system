@@ -1,0 +1,11 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+func {{.NewTableName}}({{.GetConstructorParamsDecl}}) *lua.LTable {
+	table := L.SetFuncs(L.NewTable(), {{.LuaMappingName}})
+
+	{{range .Fields.List}}
+	{{- .GenFieldInit $.GetConstructorParams "table"}}
+	{{end}}
+
+	return table
+}

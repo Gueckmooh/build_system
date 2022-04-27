@@ -1,0 +1,10 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+func {{.PublicConvertTableFromLuaName}}(L *lua.LState, T *lua.LTable) (*{{.PublicTableTypeName}}, error) {
+	privateTable, err := {{.ConvertTableFromLuaName}}(L, T)
+	if err != nil {
+		return nil, err
+	}
+	publicTable := {{.PublicTableTypeName}}(*privateTable)
+	return &publicTable, nil
+}

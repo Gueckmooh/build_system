@@ -1,0 +1,17 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+func {{.ConvertTableFromLuaName}}(L *lua.LState, T *lua.LTable) (*{{.TableTypeName}}, error) {
+	err := {{.TableIntegrityCheckerName}}(L, T)
+	if err != nil {
+		return nil, err
+	}
+	{{- range .Fields.List }}
+		{{.GenGetGoValueFromTable "T"}}
+	{{- end }}
+
+	return &{{.TableTypeName}}{
+		{{- range .Fields.List }}
+			{{.GoName}}: {{.GoName}},
+		{{- end }}
+	}, nil
+}

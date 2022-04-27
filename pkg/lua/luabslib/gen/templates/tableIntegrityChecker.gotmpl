@@ -1,0 +1,26 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+func {{.TableIntegrityCheckerName}}(L *lua.LState, T *lua.LTable) error {
+	{{- range .Fields.List}}
+	{
+		value := L.GetField(T, "{{.Name}}")
+		if {{.Types.GenTypeCheckCond "value"}} {
+			return fmt.Errorf("Forbidden type %s for field %s", value.Type().String, "{{.Name}}")
+		}
+		{{if .Types.HasTable}}
+		if value.Type() == lua.LTTable {
+			var err error
+			L.ForEach(value.(*lua.LTable), func (_, v ua.LValue) {
+				if {{.Types.GetTable.GetInnerType.GenTypeCheckCond "v"}} {
+					err = fmt.Errorf("Forbidden type %s table for field %s", value.Type().String, "{{.Name}}")
+				}
+			})
+			if err != nil {
+				return err
+			}
+		}
+		{{end}}
+	}
+	{{- end}}
+	return nil
+}

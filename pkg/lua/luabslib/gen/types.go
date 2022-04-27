@@ -43,6 +43,15 @@ func (tds TypeDescriptors) HasTable() bool {
 	return false
 }
 
+func (tds TypeDescriptors) GetType() TypeDescriptor {
+	for _, td := range tds {
+		if td.IsTable() {
+			return td
+		}
+	}
+	return nil
+}
+
 func (tds TypeDescriptors) GetDefaultValue() string {
 	if len(tds) == 1 {
 		return tds[0].GetDefaultValue()
@@ -72,7 +81,7 @@ func (tds TypeDescriptors) GoType() string {
 type StringDescriptor struct{}
 
 type TableDescriptor struct {
-	InnerType TypeDescriptor
+	InnerType TypeDescriptors
 }
 
 type CustomTypeDescriptor struct {
@@ -97,7 +106,7 @@ func NewCustomTypeDescriptor(tg *TableGenerator) *CustomTypeDescriptor {
 func NewTypeDescriptor(ty string) TypeDescriptor {
 	if typeIsTable(ty) {
 		return &TableDescriptor{
-			InnerType: NewTypeDescriptor(getInnerType(ty)),
+			InnerType: NewTypeDescriptors(getInnerType(ty)),
 		}
 	} else {
 		switch ty {
@@ -119,6 +128,23 @@ func NewTypeDescriptors(tys string) TypeDescriptors {
 		tyds = append(tyds, NewTypeDescriptor(ty))
 	}
 	return tyds
+}
+
+func (tds TypeDescriptors) IsUnique() bool {
+	return len(tds) == 1
+}
+
+func (tds TypeDescriptors) GetTable() *TableDescriptor {
+	return (tds[0].(*TableDescriptor))
+}
+
+func (tds TypeDescriptors) GenTypeCheckCond(varName string) string {
+	var checks []string
+
+	for _, ty := range tds {
+		checks = append(checks, ty.LuaTypeCheck(varName))
+	}
+	return fmt.Sprintf("!(%s)", strings.Join(checks, " || "))
 }
 
 func (s *StringDescriptor) GetDefaultValue() string {
@@ -168,13 +194,14 @@ func (s *StringDescriptor) LuaTypeCheck(varname string) string {
 func (s *StringDescriptor) GoType() string { return "string" }
 func (s *StringDescriptor) String() string { return s.Type() }
 
-func (s *TableDescriptor) Type() string    { return fmt.Sprintf("Table(%s)", s.InnerType.Type()) }
+func (s *TableDescriptor) Type() string    { return fmt.Sprintf("Table(%s)", s.InnerType) }
 func (s *TableDescriptor) LuaType() string { return "lua.LTable" }
 func (s *TableDescriptor) LuaTypeCheck(varname string) string {
 	return fmt.Sprintf("(%s.Type() == lua.LTTable)", varname)
 }
-func (s *TableDescriptor) GoType() string { return fmt.Sprintf("[]%s", s.InnerType.GoType()) }
-func (s *TableDescriptor) String() string { return s.Type() }
+func (s *TableDescriptor) GoType() string                { return fmt.Sprintf("[]%s", s.InnerType.GoType()) }
+func (s *TableDescriptor) String() string                { return s.Type() }
+func (s *TableDescriptor) GetInnerType() TypeDescriptors { return s.InnerType }
 
 func (s *CustomTypeDescriptor) Type() string    { return s.TypeName }
 func (s *CustomTypeDescriptor) LuaType() string { return "lua.LTable" }

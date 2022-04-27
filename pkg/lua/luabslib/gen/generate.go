@@ -39,6 +39,8 @@ type Table struct {
 	Fields      []Field      `xml:"fields>field"`
 }
 
+var templateDir string
+
 func readXMLFile(filename string) (*Table, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -69,11 +71,17 @@ func tryMain() error {
 	publicInterfaceName := parser.String("", "public-interface", &argparse.Options{
 		Help: "The name of the public interface",
 	})
+	tmplDir := parser.String("T", "templates-dir", &argparse.Options{
+		Required: true,
+		Help:     "The directory containing the templates to parse",
+	})
 
 	err := parser.Parse(os.Args)
 	if err != nil {
 		return err
 	}
+
+	templateDir = *tmplDir
 
 	t, err := readXMLFile(*inputFile)
 

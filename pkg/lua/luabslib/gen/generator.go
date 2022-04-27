@@ -46,12 +46,14 @@ func NewFieldDescriptor(f *Field) *FieldDescriptor {
 	} else {
 		name = f.Name
 	}
+	types := NewTypeDescriptors(f.Type)
+	if !types.IsUnique() {
+		panic(fmt.Sprintf("Forbidden type %s for field %s", types, f.Name))
+	}
 	return &FieldDescriptor{
-		Name:   name,
-		GoName: fmt.Sprintf("__v%s", f.Name),
-		Types:  NewTypeDescriptors(f.Type),
-		// Type:         f.Type,
-		// GoType:       luaTypeToGoType(f.Type),
+		Name:         name,
+		GoName:       fmt.Sprintf("__v%s", f.Name),
+		Types:        types,
 		GetterName:   fmt.Sprintf("get%s", snakeCaseToCamelCase(f.Name)),
 		DefaultValue: NewDefaultValue(f),
 	}
@@ -217,6 +219,17 @@ func (tg *TableGenerator) GetConstructorParams() []*ParamDescriptor {
 	return tg.Constructor.Params
 }
 
+func (tg *TableGenerator) GetConstructorParamsDecl() string {
+	paramDecls := []string{"L *lua.LState"}
+	if tg.Constructor != nil {
+		for _, param := range tg.Constructor.Params {
+			paramDecls = append(paramDecls, fmt.Sprintf("%s *%s", param.Name,
+				param.Type.LuaType()))
+		}
+	}
+	return strings.Join(paramDecls, ", ")
+}
+
 func (tg *TableGenerator) FieldExists(name string) bool {
 	_, ok := tg.Fields[name]
 	return ok
@@ -235,9 +248,18 @@ func genTypeCheckCond(tys TypeDescriptors, varName string) string {
 	return fmt.Sprintf("!(%s)", strings.Join(checks, " || "))
 }
 
+func (f *FieldDescriptor) GenTypeCheckCond(varName string) string {
+	var checks []string
+
+	for _, ty := range f.Types {
+		checks = append(checks, ty.LuaTypeCheck(varName))
+	}
+	return fmt.Sprintf("!(%s)", strings.Join(checks, " || "))
+}
+
 var templateFuncMap = template.FuncMap{
-	"genTypeCheck":      genTypeCheck,
-	"genTypeCheckError": genTypeCheckError,
+	"genTypeCheck": genTypeCheck,
+	// "genTypeCheckError": genTypeCheckError,
 	"genAppendForTypes": genAppendForTypes,
 	"genFieldInit":      genFieldInit,
 	"genFieldsInit":     genFieldsInit,
@@ -268,6 +290,11 @@ func genFieldInit(field *FieldDescriptor, params []*ParamDescriptor, tableName s
 	return fmt.Sprintf(`L.SetField(%s, "%s", %s)`, tableName, field.Name, linit)
 }
 
+func (f *FieldDescriptor) GenFieldInit(params []*ParamDescriptor, tableName string) string {
+	linit := getDefaultValue(f, params)
+	return fmt.Sprintf(`L.SetField(%s, "%s", %s)`, tableName, f.Name, linit)
+}
+
 func genFieldsInit(fields []*FieldDescriptor, params []*ParamDescriptor, tableName string) string {
 	var inits []string
 	for _, field := range fields {
@@ -275,6 +302,14 @@ func genFieldsInit(fields []*FieldDescriptor, params []*ParamDescriptor, tableNa
 	}
 	return strings.Join(inits, "\n")
 }
+
+// func (f *FieldDescriptor) GenFieldInit(params []*ParamDescriptor, tableName string) string {
+// 	var inits []string
+// 	for _, field := range fields {
+// 		inits = append(inits, genFieldInit(field, params, tableName))
+// 	}
+// 	return strings.Join(inits, "\n")
+// }
 
 func genAppendForTypes(tys TypeDescriptors, varName string, tabName string) string {
 	var appenders []string
@@ -304,20 +339,20 @@ func genAppendForTypes(tys TypeDescriptors, varName string, tabName string) stri
 	return strings.Join(appenders, " else ")
 }
 
-func genTableTypeCheck(ty TypeDescriptor, varName string) string {
-	templateFuncMap := template.FuncMap{
-		"genTypeCheckCond": genTypeCheckCond,
-		"genTypeCheck":     genTypeCheck,
-	}
-	return MustExecuteTemplate("genTableTypeCheck", tableTypeCheckTemplate, templateFuncMap,
-		struct {
-			VarType TypeDescriptors
-			VarName string
-		}{
-			VarType: TypeDescriptors{ty.(*TableDescriptor).InnerType},
-			VarName: varName,
-		})
-}
+// func genTableTypeCheck(ty TypeDescriptor, varName string) string {
+// 	templateFuncMap := template.FuncMap{
+// 		"genTypeCheckCond": genTypeCheckCond,
+// 		"genTypeCheck":     genTypeCheck,
+// 	}
+// 	return MustExecuteTemplate("genTableTypeCheck", tableTypeCheckTemplate, templateFuncMap,
+// 		struct {
+// 			VarType TypeDescriptors
+// 			VarName string
+// 		}{
+// 			VarType: TypeDescriptors{ty.(*TableDescriptor).InnerType},
+// 			VarName: varName,
+// 		})
+// }
 
 func genTypeCheck(tys TypeDescriptors, varName string) string {
 	templateFuncMap := template.FuncMap{
@@ -333,11 +368,11 @@ func genTypeCheck(tys TypeDescriptors, varName string) string {
 			VarName:  varName,
 		})
 	var tableChecks []string
-	for _, ty := range tys {
-		if ty.IsTable() {
-			genTableTypeCheck(ty, varName)
-		}
-	}
+	// for _, ty := range tys {
+	// 	if ty.IsTable() {
+	// 		genTableTypeCheck(ty, varName)
+	// 	}
+	// }
 
 	if len(tableChecks) > 0 {
 		return fmt.Sprintf("%s\n%s", check, strings.Join(tableChecks, "\n"))
@@ -345,22 +380,22 @@ func genTypeCheck(tys TypeDescriptors, varName string) string {
 	return check
 }
 
-func genTableTypeCheckError(ty TypeDescriptor, varName string) string {
-	templateFuncMap := template.FuncMap{
-		"genTypeCheckCond":  genTypeCheckCond,
-		"genTypeCheckError": genTypeCheckError,
-	}
-	return MustExecuteTemplate("getTableTypeCheckError", tableTypeCheckErrorTemplate, templateFuncMap,
-		struct {
-			VarTypes TypeDescriptors
-			VarName  string
-		}{
-			VarTypes: TypeDescriptors{ty.(*TableDescriptor).InnerType},
-			VarName:  varName,
-		})
-}
+// func genTableTypeCheckError(ty TypeDescriptor, varName string) string {
+// 	templateFuncMap := template.FuncMap{
+// 		"genTypeCheckCond":  genTypeCheckCond,
+// 		"genTypeCheckError": func(a *FieldDescriptor, b, c string) string { return a.GenTypeCheckError(b, c) },
+// 	}
+// 	return MustExecuteTemplate("getTableTypeCheckError", tableTypeCheckErrorTemplate, templateFuncMap,
+// 		struct {
+// 			VarTypes TypeDescriptors
+// 			VarName  string
+// 		}{
+// 			VarTypes: TypeDescriptors{ty.(*TableDescriptor).InnerType},
+// 			VarName:  varName,
+// 		})
+// }
 
-func genTypeCheckError(tys []TypeDescriptor, varName, errName string) string {
+func (f *FieldDescriptor) GenTypeCheckError(varName, errName string) string {
 	templateFuncMap := template.FuncMap{
 		"genTypeCheckCond": genTypeCheckCond,
 		"genTypeCheck":     genTypeCheck,
@@ -371,16 +406,16 @@ func genTypeCheckError(tys []TypeDescriptor, varName, errName string) string {
 			ErrName  string
 			VarName  string
 		}{
-			VarTypes: tys,
+			VarTypes: f.Types,
 			ErrName:  errName,
 			VarName:  varName,
 		})
 	var tableChecks []string
-	for _, ty := range tys {
-		if ty.IsTable() {
-			genTableTypeCheckError(ty, varName)
-		}
-	}
+	// for _, ty := range f.Types {
+	// 	if ty.IsTable() {
+	// 		genTableTypeCheckError(ty, varName)
+	// 	}
+	// }
 
 	if len(tableChecks) > 0 {
 		return fmt.Sprintf("%s\n%s", check, strings.Join(tableChecks, "\n"))
@@ -471,39 +506,26 @@ func (tg *TableGenerator) GenMethod(m *MethodDescriptor) string {
 }
 
 func (tg *TableGenerator) GenIntegrityChecker() string {
-	return MustExecuteTemplate("GenIntegrityChecker", checkTableIntegrityTemplate, templateFuncMap,
-		struct {
-			FuncName string
-			Fields   []*FieldDescriptor
-		}{
-			FuncName: tg.TableIntegrityCheckerName,
-			Fields:   tg.Fields.List(),
-		})
+	return MustExecuteTemplateFile("tableIntegrityChecker.gotmpl", templateFuncMap,
+		tg)
 }
 
 func (tg *TableGenerator) GenNewTable() string {
-	paramDecls := []string{"L *lua.LState"}
-	if tg.Constructor != nil {
-		for _, param := range tg.Constructor.Params {
-			paramDecls = append(paramDecls, fmt.Sprintf("%s *%s", param.Name,
-				param.Type.LuaType()))
-		}
-	}
-
-	return MustExecuteTemplate("GenNewTable", newTableTemplate, templateFuncMap,
-		struct {
-			FuncName        string
-			Fields          []*FieldDescriptor
-			FunctionMapping string
-			ParamsDecl      string
-			Params          []*ParamDescriptor
-		}{
-			FuncName:        tg.NewTableName,
-			Fields:          tg.Fields.List(),
-			FunctionMapping: tg.LuaMappingName,
-			ParamsDecl:      strings.Join(paramDecls, ", "),
-			Params:          tg.GetConstructorParams(),
-		})
+	return MustExecuteTemplateFile("newTable.gotmpl", templateFuncMap,
+		// struct {
+		// 	FuncName        string
+		// 	Fields          []*FieldDescriptor
+		// 	FunctionMapping string
+		// 	ParamsDecl      string
+		// 	Params          []*ParamDescriptor
+		// }{
+		// 	FuncName:        tg.NewTableName,
+		// 	Fields:          tg.Fields.List(),
+		// 	FunctionMapping: tg.LuaMappingName,
+		// 	ParamsDecl:      strings.Join(paramDecls, ", "),
+		// 	Params:          tg.GetConstructorParams(),
+		// }
+		tg)
 }
 
 func genParamGets(params []*ParamDescriptor) []string {
@@ -545,38 +567,7 @@ func (tg *TableGenerator) GenLuaNewTable() string {
 }
 
 func (tg *TableGenerator) GenLuaMappingTable() string {
-	var mappingList []struct {
-		LuaName string
-		GoName  string
-	}
-	for _, v := range tg.Methods {
-		mappingList = append(mappingList, struct {
-			LuaName string
-			GoName  string
-		}{
-			LuaName: v.LuaName,
-			GoName:  v.Name,
-		})
-	}
-	var buff bytes.Buffer
-	t, err := template.New("luaMapping").Parse(luaFunctionMapTemplate)
-	if err != nil {
-		panic(err.Error())
-	}
-	err = t.Execute(&buff, struct {
-		FuncMapName string
-		Mappings    []struct {
-			LuaName string
-			GoName  string
-		}
-	}{
-		FuncMapName: tg.LuaMappingName,
-		Mappings:    mappingList,
-	})
-	if err != nil {
-		panic(err.Error())
-	}
-	return buff.String()
+	return MustExecuteTemplateFile("luaFunctionMap.gotmpl", template.FuncMap{}, tg)
 }
 
 func genGetGoStringFromLuaField(varName, fieldName, tableName string) string {
@@ -638,37 +629,18 @@ func genGetGoTableFromLuaField(varName, fieldName, tableName string, ty TypeDesc
 		})
 }
 
-// func genGetGoStringFromValue(varName, luaVarName string) string {
-// 	t, err := template.New("genGetGoStringFromValue").Parse(getLuaStringFromValueTemplate)
-// 	if err != nil {
-// 		panic(err)
+// func (f *FieldDescriptor) GenGetGoValueFromTable(tableName string) string {
+// 	switch ty := f.Types[0].(type) {
+// 	case *StringDescriptor:
+// 		return genGetGoStringFromLuaField(f.GoName, f.Name, tableName)
+// 	case *TableDescriptor:
+// 		return genGetGoTableFromLuaField(f.GoName, f.Name, tableName, ty.InnerType)
+// 	case *CustomTypeDescriptor:
+// 		return genGetGoObjectFromLuaField(f.GoName, f.Name, tableName, ty)
+// 	default:
+// 		panic(fmt.Sprintf("genGetGoValueFromLuaField: Unhandled type %s", ty))
 // 	}
-// 	var buff bytes.Buffer
-// 	err = t.Execute(&buff, struct {
-// 		VarName    string
-// 		LuaVarName string
-// 	}{
-// 		VarName:    varName,
-// 		LuaVarName: luaVarName,
-// 	})
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return buff.String()
 // }
-
-func genGetGoValueFromLuaField(varName, fieldName, tableName string, tys TypeDescriptors) string {
-	switch ty := tys[0].(type) {
-	case *StringDescriptor:
-		return genGetGoStringFromLuaField(varName, fieldName, tableName)
-	case *TableDescriptor:
-		return genGetGoTableFromLuaField(varName, fieldName, tableName, ty.InnerType)
-	case *CustomTypeDescriptor:
-		return genGetGoObjectFromLuaField(varName, fieldName, tableName, ty)
-	default:
-		panic(fmt.Sprintf("genGetGoValueFromLuaField: Unhandled type %s", ty))
-	}
-}
 
 func genGetGoValueFromValue(varName, luaVarName string, ty TypeDescriptor) string {
 	switch ty.(type) {
@@ -677,30 +649,11 @@ func genGetGoValueFromValue(varName, luaVarName string, ty TypeDescriptor) strin
 	default:
 		panic(fmt.Sprintf("genGetGoValueFromValue: Unhandled type %s", ty))
 	}
-	// switch luaType {
-	// case "String":
-	// 	return genGetGoStringFromValue(varName, luaVarName)
-	// default:
-	// 	panic(fmt.Sprintf("genGetGoValueFromValue: Unhandled type %s", luaType))
-	// }
 }
 
 func (tg *TableGenerator) GenConverterFromLuaTable() string {
-	return MustExecuteTemplate("GenConverterFromLuaTable", tableConversionTemplate,
-		template.FuncMap{
-			"genGetGoValueFromLuaField": genGetGoValueFromLuaField,
-		},
-		struct {
-			FuncName       string
-			TypeName       string
-			Fields         []*FieldDescriptor
-			CheckIntegrity string
-		}{
-			FuncName:       tg.ConvertTableFromLuaName,
-			TypeName:       tg.TableTypeName,
-			Fields:         tg.Fields.List(),
-			CheckIntegrity: tg.TableIntegrityCheckerName,
-		})
+	return MustExecuteTemplateFile("convertLuaTable.gotmpl",
+		template.FuncMap{}, tg)
 }
 
 func (f *FieldDescriptor) GenTypeDefField() string {
@@ -726,54 +679,20 @@ func (tg *TableGenerator) GenPublicTableTypeDefinition() string {
 
 func (tg *TableGenerator) GenPublicTableGetters() string {
 	if len(tg.PublicInterfaceName) > 0 {
-		t, err := template.New("GenPublicTableGetters").Parse(publicTableGetterTemplate)
-		if err != nil {
-			panic(err)
-		}
-		var getters []string
-		for _, field := range tg.Fields {
-			var buff bytes.Buffer
-			err = t.Execute(&buff, struct {
-				TableName string
-				FuncName  string
-				TypeName  string
-				FieldName string
-			}{
-				TableName: tg.PublicTableTypeName,
-				FuncName:  field.GetterName,
-				TypeName:  field.Types.GoType(),
-				FieldName: field.GoName,
-			})
-			if err != nil {
-				panic(err)
-			}
-			getters = append(getters, buff.String())
-		}
-		return strings.Join(getters, "\n\n")
+		return MustExecuteTemplate("GenPublicTableGetters",
+			`{{range $field := .Fields.List}}
+func (t *{{$.PublicTableTypeName}}) {{$field.GetterName}}() {{$field.Types.GoType}} {
+	return t.{{$field.GoName}}
+}
+{{end}}`,
+			template.FuncMap{}, tg)
 	}
 	return ""
 }
 
 func (tg *TableGenerator) GenPublicTableConverter() string {
 	if len(tg.PublicInterfaceName) > 0 {
-		t, err := template.New("GenPublicTableConverter").Parse(publicConvertTableTemplate)
-		if err != nil {
-			panic(err)
-		}
-		var buff bytes.Buffer
-		err = t.Execute(&buff, struct {
-			TableName   string
-			FuncName    string
-			ConvertName string
-		}{
-			TableName:   tg.PublicTableTypeName,
-			FuncName:    tg.PublicConvertTableFromLuaName,
-			ConvertName: tg.ConvertTableFromLuaName,
-		})
-		if err != nil {
-			panic(err)
-		}
-		return buff.String()
+		return MustExecuteTemplateFile("publicConvertTable.gotmpl", template.FuncMap{}, tg)
 	}
 	return ""
 }
@@ -841,53 +760,54 @@ func (tg *TableGenerator) GenFile() string {
 		methods = append(methods, tg.GenMethod(m))
 	}
 
-	functionMapping := tg.GenLuaMappingTable()
-	integrityChecker := tg.GenIntegrityChecker()
-	newTable := tg.GenNewTable()
-	luaNewTable := tg.GenLuaNewTable()
-	convertLuaTable := tg.GenConverterFromLuaTable()
-	typeDefinition := tg.GenTableTypeDefinition()
-	publicTypeDefinition := tg.GenPublicTableTypeDefinition()
-	publicGetters := tg.GenPublicTableGetters()
-	publicConvertLuaTable := tg.GenPublicTableConverter()
-	publicNewTable := tg.GenPublicNewTable()
-	publicLuaNewTable := tg.GenPublicLuaNewTable()
+	// functionMapping := tg.GenLuaMappingTable()
+	// integrityChecker := tg.GenIntegrityChecker()
+	// newTable := tg.GenNewTable()
+	// luaNewTable := tg.GenLuaNewTable()
+	// convertLuaTable := tg.GenConverterFromLuaTable()
+	// typeDefinition := tg.GenTableTypeDefinition()
+	// publicTypeDefinition := tg.GenPublicTableTypeDefinition()
+	// publicGetters := tg.GenPublicTableGetters()
+	// publicConvertLuaTable := tg.GenPublicTableConverter()
+	// publicNewTable := tg.GenPublicNewTable()
+	// publicLuaNewTable := tg.GenPublicLuaNewTable()
 
 	t, err := template.New("file").Parse(libraryBodyTemplate)
 	if err != nil {
 		panic(err.Error())
 	}
 	var buff bytes.Buffer
-	err = t.Execute(&buff,
-		struct {
-			PackageName           string
-			GoMethods             []string
-			FunctionMapping       string
-			IntegrityChecker      string
-			NewTable              string
-			LuaNewTable           string
-			PublicNewTable        string
-			PublicLuaNewTable     string
-			TypeDefinition        string
-			PublicTypeDefinition  string
-			ConvertLuaTable       string
-			PublicGetters         string
-			PublicConvertLuaTable string
-		}{
-			PackageName:           tg.PackageName,
-			GoMethods:             methods,
-			FunctionMapping:       functionMapping,
-			IntegrityChecker:      integrityChecker,
-			NewTable:              newTable,
-			LuaNewTable:           luaNewTable,
-			PublicNewTable:        publicNewTable,
-			PublicLuaNewTable:     publicLuaNewTable,
-			TypeDefinition:        typeDefinition,
-			PublicTypeDefinition:  publicTypeDefinition,
-			ConvertLuaTable:       convertLuaTable,
-			PublicGetters:         publicGetters,
-			PublicConvertLuaTable: publicConvertLuaTable,
-		})
+	err = t.Execute(&buff, tg)
+	// err = t.Execute(&buff,
+	// 	struct {
+	// 		PackageName           string
+	// 		GoMethods             []string
+	// 		FunctionMapping       string
+	// 		IntegrityChecker      string
+	// 		NewTable              string
+	// 		LuaNewTable           string
+	// 		PublicNewTable        string
+	// 		PublicLuaNewTable     string
+	// 		TypeDefinition        string
+	// 		PublicTypeDefinition  string
+	// 		ConvertLuaTable       string
+	// 		PublicGetters         string
+	// 		PublicConvertLuaTable string
+	// 	}{
+	// 		PackageName:           tg.PackageName,
+	// 		GoMethods:             methods,
+	// 		FunctionMapping:       functionMapping,
+	// 		IntegrityChecker:      integrityChecker,
+	// 		NewTable:              newTable,
+	// 		LuaNewTable:           luaNewTable,
+	// 		PublicNewTable:        publicNewTable,
+	// 		PublicLuaNewTable:     publicLuaNewTable,
+	// 		TypeDefinition:        typeDefinition,
+	// 		PublicTypeDefinition:  publicTypeDefinition,
+	// 		ConvertLuaTable:       convertLuaTable,
+	// 		PublicGetters:         publicGetters,
+	// 		PublicConvertLuaTable: publicConvertLuaTable,
+	// 	})
 	if err != nil {
 		panic(err.Error())
 	}
