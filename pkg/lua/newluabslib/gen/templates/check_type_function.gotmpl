@@ -1,0 +1,11 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+{{- /* func CheckClass(L *lua.LState, n int) *Class */ -}}
+{{.Signature}} {
+	ud := L.CheckUserData(n)
+	if v, ok := ud.Value.({{.Type.ReturnType.GoString}}); ok {
+		return v
+	}
+	L.ArgError(n, "{{.Type.ReturnType.GoString}} expected")
+	return nil
+}

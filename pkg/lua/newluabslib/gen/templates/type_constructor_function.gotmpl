@@ -1,0 +1,11 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+{{- /* func NewClass(L *lua.LState) *lua.LUserData */ -}}
+{{.Signature}} {
+	ud := L.NewUserData()
+	{{- /* @todo check if the type has a ctor */}}
+	v := {{.Class.Constructor}}
+	ud.Value = v
+	L.SetMetatable(ud, L.GetTypeMetatable({{.Class.MetatableName}}))
+	return ud
+}

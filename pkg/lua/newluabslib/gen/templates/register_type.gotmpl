@@ -1,0 +1,9 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+{{- /* func RegisterClassType(L *lua.LState) */ -}}
+{{.Signature}} {
+	mt := L.NewTypeMetatable({{.Class.MetatableName}})
+	L.SetGlobal({{.Class.MetatableName}}, mt)
+
+	L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), {{.Class.MethodMapName}}))
+}

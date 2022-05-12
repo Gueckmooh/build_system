@@ -1,0 +1,21 @@
+{{- /* -*- mode: go; -*- */ -}}
+package {{getPackage}}
+
+import lua "github.com/yuin/gopher-lua"
+
+var {{.MethodMapName}} = map[string]lua.LGFunction{
+	{{- range .Methods}}
+	"{{.Name}}": {{.MappingName}},
+	{{- end}}
+}
+
+const {{.MetatableName}} = "{{.Name}}"
+
+{{.FunctionBundle.LuaCheckType.Generate}}
+{{.FunctionBundle.LuaTypeCtor.Generate}}
+{{.FunctionBundle.LuaRegisterType.Generate}}
+{{.FunctionBundle.LuaNewLoader.Generate}}
+
+{{range .Methods}}
+{{.GenerateLuaBinding}}
+{{end}}

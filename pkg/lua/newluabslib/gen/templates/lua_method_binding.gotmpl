@@ -1,0 +1,53 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+{{- /* func LuaMethod(L *lua.LState) int */ -}}
+{{.LuaSignature}} {
+	this := {{.This.CheckFunction.CallExpr "L" "1"}}
+	{{- $nparam := 2}}
+	{{- $params := newl}}
+	{{- range .Type.Parameters}}
+	{{- $nparams := printf "%d" $nparam}}
+	{{- $paramname := printf "p%d" $nparam}}
+	{{- if .Type.NeedsEllipsis}}
+	{{- $params = printf "%s..." $paramname | appendl $params}}
+	{{- else}}
+	{{- $params = appendl $params $paramname}}
+	{{- end}}
+	{{- if .Type.IsContainer}}
+	{{- $tempparamname := printf "p%dvalue" $nparam}}
+	{{$tempparamname}} := L.Get({{$nparam}})
+	var {{$paramname}} {{.Type.GoString}}
+	if {{$tempparamname}}.Type() == lua.LTTable {
+		L.ForEach(p2value.(*lua.LTable), func(_, v lua.LValue) {
+			if v.Type() == {{.Type.InsideType.LuaString}} {
+				{{$paramname}} = append({{$paramname}}, {{.Type.InsideType.ToGoType "v"}})
+			} else {
+				L.ArgError({{$nparam}}, "string table expected")
+			}
+		})
+	} else if {{$tempparamname}}.Type() == {{.Type.InsideType.LuaString}} {
+		{{$paramname}} = append({{$paramname}}, {{.Type.InsideType.ToGoType $tempparamname}})
+	} else {
+		L.ArgError({{$nparam}}, "string or string table expected")
+	}
+	{{- else}}
+	{{$paramname}} := {{.Type.CheckFunction.CallExpr "L" $nparams}}
+	{{- end}}
+	{{- $nparam = add $nparam 1}}
+	{{- end}}
+	{{if .Returns}} ret := {{end}} this.{{.Name}}({{join $params ", "}})
+	{{- if .Returns}}
+	{{- if .Type.ReturnType.IsContainer}}
+	retvalue := L.NewTable()
+	for _, v := range ret {
+		retvalue.Append({{.Type.ReturnType.InsideType.ToLuaType "v"}})
+	}
+	L.Push(retvalue)
+	{{- else}}
+	L.Push({{.Type.ReturnType.ToLuaType "ret"}})
+	{{- end}}
+	return 1
+	{{- else}}
+	return 0
+	{{- end}}
+}
