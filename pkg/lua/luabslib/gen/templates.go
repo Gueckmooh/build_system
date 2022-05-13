@@ -48,11 +48,11 @@ import (
 
 {{/* .GenIntegrityChecker */}}
 
-{{ .GenNewTable }}
+{{/* .GenNewTable */}}
 
-{{/* .LuaNewTable */}}
+{{/* .GenLuaNewTable */}}
 
-{{/* .PublicNewTable */}}
+{{ .GenPublicNewTable }}
 
 {{/* .PublicLuaNewTable */}}
 
@@ -116,16 +116,16 @@ const tableTypeCheckErrorTemplate = `if {{.VarName}}.Type() == lua.LTTable {
 // 	return table
 // }`
 
-const luaNewTableTemplate = `func {{.FuncName}}(L *lua.LState) int {
-	{{.ParamGets}}
-	{{.ParamTypeChecks}}
+// const luaNewTableTemplate = `func {{.FuncName}}(L *lua.LState) int {
+// 	{{.ParamGets}}
+// 	{{.ParamTypeChecks}}
 
-	table := {{.NewFuncName}}({{.ParamsUse}})
+// 	table := {{.NewFuncName}}({{.ParamsUse}})
 
-	L.Push(table)
+// 	L.Push(table)
 
-	return 1
-}`
+// 	return 1
+// }`
 
 const getLuaStringFromTableFieldTemplate = `var {{.VarName}} string
 {

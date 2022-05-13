@@ -1,6 +1,6 @@
 package luabslib
 
-//go:generate go run ./gen -i definitions/Profile.xml --package luabslib --public-interface "LuaProfile" -o profile_gen.go
+//go:generate go run ./gen -i definitions/Profile.xml --package luabslib --public-interface "LuaProfile" -o profile_gen.go -T gen/templates
 
 import (
 	"github.com/gueckmooh/bs/pkg/functional"

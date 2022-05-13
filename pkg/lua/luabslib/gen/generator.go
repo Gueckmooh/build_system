@@ -230,6 +230,16 @@ func (tg *TableGenerator) GetConstructorParamsDecl() string {
 	return strings.Join(paramDecls, ", ")
 }
 
+func (tg *TableGenerator) GetConstructorParamsUse() string {
+	paramDecls := []string{"L"}
+	if tg.Constructor != nil {
+		for _, param := range tg.Constructor.Params {
+			paramDecls = append(paramDecls, param.Name)
+		}
+	}
+	return strings.Join(paramDecls, ", ")
+}
+
 func (tg *TableGenerator) FieldExists(name string) bool {
 	_, ok := tg.Fields[name]
 	return ok
@@ -550,20 +560,21 @@ func (tg *TableGenerator) GenLuaNewTable() string {
 		}
 	}
 
-	return MustExecuteTemplate("GenLuaNewTable", luaNewTableTemplate, templateFuncMap,
-		struct {
-			FuncName        string
-			NewFuncName     string
-			ParamGets       string
-			ParamTypeChecks string
-			ParamsUse       string
-		}{
-			FuncName:        tg.LuaNewTableName,
-			NewFuncName:     tg.NewTableName,
-			ParamGets:       strings.Join(genParamGets(tg.GetConstructorParams()), "\n"),
-			ParamTypeChecks: strings.Join(paramTypeChecks, "\n"),
-			ParamsUse:       strings.Join(paramUse, ", "),
-		})
+	return MustExecuteTemplateFile("newluaTable.gotmpl", templateFuncMap,
+		// struct {
+		// 	FuncName        string
+		// 	NewFuncName     string
+		// 	ParamGets       string
+		// 	ParamTypeChecks string
+		// 	ParamsUse       string
+		// }{
+		// 	FuncName:        tg.LuaNewTableName,
+		// 	NewFuncName:     tg.NewTableName,
+		// 	ParamGets:       strings.Join(genParamGets(tg.GetConstructorParams()), "\n"),
+		// 	ParamTypeChecks: strings.Join(paramTypeChecks, "\n"),
+		// 	ParamsUse:       strings.Join(paramUse, ", "),
+		// }
+		tg)
 }
 
 func (tg *TableGenerator) GenLuaMappingTable() string {

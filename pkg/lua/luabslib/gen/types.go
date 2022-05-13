@@ -147,6 +147,14 @@ func (tds TypeDescriptors) GenTypeCheckCond(varName string) string {
 	return fmt.Sprintf("!(%s)", strings.Join(checks, " || "))
 }
 
+// func (ty TypeDescriptor) GenTypeCheckCond(varName string) string {
+// 	var checks []string
+
+// 		checks = append(checks, ty.LuaTypeCheck(varName))
+
+// 	return fmt.Sprintf("!(%s)", strings.Join(checks, " || "))
+// }
+
 func (s *StringDescriptor) GetDefaultValue() string {
 	return `lua.LString("")`
 }
