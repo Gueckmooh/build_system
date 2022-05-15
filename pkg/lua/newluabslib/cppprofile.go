@@ -23,3 +23,7 @@ func (p *CPPProfile) AddLinkOptions(bo ...string) {
 func NewCPPProfileLoader(ret **CPPProfile) lua.LGFunction {
 	return __NewCPPProfileLoader(ret)
 }
+
+func NewCPPProfile(dialect string) *CPPProfile {
+	return &CPPProfile{DialectF: dialect}
+}

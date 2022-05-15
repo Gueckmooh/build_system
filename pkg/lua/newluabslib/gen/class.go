@@ -10,14 +10,23 @@ type Class struct {
 	Name           string
 	Fields         []*Field
 	Methods        []*Method
+	Ctor           *Function
 	Ast            *ast.TypeSpec
 	FunctionBundle FunctionNameBundle
 	MethodMapName  string
 	MetatableName  string
 }
 
-func (c *Class) Constructor() string {
-	return fmt.Sprintf("&%s{}", c.Name)
+func (c *Class) Constructor(params string) string {
+	if c.Ctor != nil {
+		return fmt.Sprintf("%s(%s)", c.Ctor.Name, params)
+	} else {
+		return fmt.Sprintf("&%s{}", c.Name)
+	}
+}
+
+func (c *Class) HasCtor() bool {
+	return c.Ctor != nil
 }
 
 func newFieldFromNode(node *ast.Field) *Field {
@@ -46,6 +55,10 @@ func (c *Class) String() string {
 	fmt.Fprintf(&buff, "fields:\n")
 	for _, field := range c.Fields {
 		fmt.Fprintf(&buff, "  %s\n", field)
+	}
+	if c.Ctor != nil {
+		fmt.Fprintf(&buff, "constructor:\n")
+		fmt.Fprintf(&buff, "  %s\n", c.Ctor)
 	}
 	fmt.Fprintf(&buff, "methods:\n")
 	for _, method := range c.Methods {

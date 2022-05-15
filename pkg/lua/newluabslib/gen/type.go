@@ -46,15 +46,6 @@ type (
 	TGFunction struct{}
 )
 
-// var typesTable = map[string]Type {
-// 	"lua"
-
-// }
-
-// func GetType(name string) Type {
-
-// }
-
 func (t *TNil) GoString() string       { return "<nil>" }
 func (t *TString) GoString() string    { return "string" }
 func (t *TCustom) GoString() string    { return t.Name }
@@ -145,24 +136,6 @@ func (t *TArray) CheckFunction() Callable {
 		},
 	}
 }
-
-// func (t *TEllipsis) CheckFunction() Callable {
-// 	return &Method{
-// 		This: &TState{},
-// 		Function: Function{
-// 			Name: "CheckEllipsis",
-// 			Type: &TFunction{
-// 				ReturnType: t,
-// 				Parameters: []*Field{
-// 					{
-// 						Name: "n",
-// 						Type: &TInt{},
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// }
 
 func (t *TClass) CheckFunction() Callable {
 	return &Function{
@@ -266,7 +239,9 @@ func newTypeFromName(name string) Type {
 	case "string":
 		return &TString{}
 	default:
-		return &TCustom{}
+		return &TCustom{
+			Name: name,
+		}
 	}
 }
 

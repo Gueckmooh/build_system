@@ -90,8 +90,9 @@ func (f *Method) CallExpr(params ...string) string {
 
 func getMethodsForClass(c *Class, node ast.Node) {
 	mr := &methodReader{
-		className: c.Name,
-		methods:   &[]*Function{},
+		className:   c.Name,
+		methods:     &[]*Function{},
+		constructor: new(*Function),
 	}
 	ast.Walk(mr, node)
 	var methods []*Method
@@ -102,18 +103,38 @@ func getMethodsForClass(c *Class, node ast.Node) {
 			MappingName: fmt.Sprintf("__lua%s%s", c.Name, f.Name),
 		})
 	}
+	c.Ctor = *mr.constructor
 	c.Methods = methods
 }
 
 type methodReader struct {
-	className string
-	methods   *[]*Function
+	className   string
+	methods     *[]*Function
+	constructor **Function
 }
 
 func (m methodReader) Visit(node ast.Node) ast.Visitor {
 	switch n := node.(type) {
 	case *ast.FuncDecl:
 		if n.Recv == nil {
+			if n.Name.Name != makeConstructorName(m.className) {
+				break
+			}
+			if len(n.Type.Results.List) == 0 || len(n.Type.Results.List[0].Names) > 1 {
+				break
+			}
+
+			if v, ok := skipStar(n.Type.Results.List[0].Type).(*ast.Ident); ok {
+				if v.Name == m.className {
+					ty := newTypeFromNode(n)
+					if ty, ok := ty.(*TFunction); ok {
+						*m.constructor = &Function{
+							Name: n.Name.Name,
+							Type: ty,
+						}
+					}
+				}
+			}
 			break
 		}
 		if len(n.Recv.List) > 0 {
