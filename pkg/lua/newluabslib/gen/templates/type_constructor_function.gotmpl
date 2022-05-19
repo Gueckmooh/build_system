@@ -2,9 +2,6 @@
 
 {{- /* func NewClass(L *lua.LState) *lua.LUserData */ -}}
 {{.Signature}} {
-
-
-
 	{{- $nparam := 1}}
 	{{- $params := newl}}
 	{{- if .Class.HasCtor }}
@@ -39,9 +36,6 @@
 	{{- $nparam = add $nparam 1}}
 	{{- end}}
 	{{- end}}
-
-
-
 
 	ud := L.NewUserData()
 	{{- /* @todo check if the type has a ctor */}}

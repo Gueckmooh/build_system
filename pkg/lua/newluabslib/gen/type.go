@@ -176,8 +176,8 @@ func (t *TInt) CheckFunction() Callable {
 
 func (t *TNil) ToLuaType(v string) string       { return "<nil>" }
 func (t *TString) ToLuaType(v string) string    { return fmt.Sprintf("lua.LString(%s)", v) }
-func (t *TCustom) ToLuaType(v string) string    { return "" }
-func (t *TPointer) ToLuaType(v string) string   { return "" }
+func (t *TCustom) ToLuaType(v string) string    { return fmt.Sprintf("__Convert%s(%s)", t.Name, v) }
+func (t *TPointer) ToLuaType(v string) string   { return t.X.ToLuaType(v) }
 func (t *TClass) ToLuaType(v string) string     { return "" }
 func (t *TState) ToLuaType(v string) string     { return "" }
 func (t *TUserData) ToLuaType(v string) string  { return "" }

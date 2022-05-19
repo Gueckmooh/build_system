@@ -6,4 +6,7 @@
 	L.SetGlobal({{.Class.MetatableName}}, mt)
 
 	L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), {{.Class.MethodMapName}}))
+	{{- if .Class.HasCtor }}
+	L.SetField(mt, "new", L.NewFunction({{.Class.Ctor.MappingName}}));
+	{{- end}}
 }
