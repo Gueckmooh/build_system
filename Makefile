@@ -25,6 +25,8 @@ NOINC = clean, mrproper
 
 SRC := $(shell find pkg -type f -name '*.go' -print) $(shell find cmd -type f -name '*.go' -print) go.mod
 # SRC += pkg/lua/luabslib/cppprofile_gen.go pkg/lua/luabslib/profile_gen.go
+GENERATED_SRC := pkg/lua/newluabslib/cppprofile_gen.go pkg/lua/newluabslib/profile_gen.go pkg/lua/newluabslib/component_gen.go pkg/lua/newluabslib/components_gen.go pkg/lua/newluabslib/project_gen.go
+SRC += $(GENERATED_SRC)
 
 ALLBINS := $(addprefix $(BINDIR)/, $(ALLBIN))
 
@@ -47,6 +49,9 @@ build: $(ALLBINS)
 # pkg/lua/luabslib/profile_gen.go: ./pkg/lua/luabslib/profile.go pkg/lua/luabslib/definitions/Profile.xml $(wildcard pkg/lua/luabslib/gen/*.go)
 # 	go generate $<
 # 	go fmt $@
+
+pkg/lua/newluabslib/%_gen.go: pkg/lua/newluabslib/%.go $(wildcard pkg/lua/newluabslib/gen/*.go)
+	go generate $<
 
 $(BINDIR)/%: $(SRC)
 	GO111MODULE=on go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/$(notdir $@)
