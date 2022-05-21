@@ -24,6 +24,9 @@ DEPDIR ?= .deps
 NOINC = clean, mrproper
 
 SRC := $(shell find pkg -type f -name '*.go' -print) $(shell find cmd -type f -name '*.go' -print) go.mod
+# SRC += pkg/lua/luabslib/cppprofile_gen.go pkg/lua/luabslib/profile_gen.go
+GENERATED_SRC := pkg/lua/luabslib/cppprofile_gen.go pkg/lua/luabslib/profile_gen.go pkg/lua/luabslib/component_gen.go pkg/lua/luabslib/components_gen.go pkg/lua/luabslib/project_gen.go
+SRC += $(GENERATED_SRC)
 
 ALLBINS := $(addprefix $(BINDIR)/, $(ALLBIN))
 
@@ -38,6 +41,17 @@ SHELL      = /usr/bin/env bash
 
 .PHONY: build
 build: $(ALLBINS)
+
+# pkg/lua/luabslib/cppprofile_gen.go: ./pkg/lua/luabslib/cppprofile.go pkg/lua/luabslib/definitions/CPPProfile.xml $(wildcard pkg/lua/luabslib/gen/*.go)
+# 	go generate $<
+# 	go fmt $@
+
+# pkg/lua/luabslib/profile_gen.go: ./pkg/lua/luabslib/profile.go pkg/lua/luabslib/definitions/Profile.xml $(wildcard pkg/lua/luabslib/gen/*.go)
+# 	go generate $<
+# 	go fmt $@
+
+pkg/lua/luabslib/%_gen.go: pkg/lua/luabslib/%.go $(wildcard pkg/lua/luabslib/gen/*.go)
+	go generate $<
 
 $(BINDIR)/%: $(SRC)
 	GO111MODULE=on go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/$(notdir $@)

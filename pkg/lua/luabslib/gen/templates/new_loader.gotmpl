@@ -1,0 +1,13 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+{{- /* func NewClassLoader(v **Class) lua.LGFunction */ -}}
+{{.Signature}} {
+	return func(L *lua.LState) int {
+		{{.Class.FunctionBundle.LuaRegisterType.CallExpr "L"}}
+
+		ud := {{.Class.FunctionBundle.LuaTypeCtor.CallExpr "L"}}
+		*ret = ud.Value.(*{{.Class.Name}})
+		L.Push(ud)
+		return 1
+	}
+}

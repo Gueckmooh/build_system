@@ -1,0 +1,47 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+{{- /* func NewClass(L *lua.LState) *lua.LUserData */ -}}
+{{.Signature}} {
+	{{- $nparam := 1}}
+	{{- $params := newl}}
+	{{- if .Class.HasCtor }}
+	{{- range .Class.Ctor.Type.Parameters}}
+	{{- $nparams := printf "%d" $nparam}}
+	{{- $paramname := printf "p%d" $nparam}}
+	{{- if .Type.NeedsEllipsis}}
+	{{- $params = printf "%s..." $paramname | appendl $params}}
+	{{- else}}
+	{{- $params = appendl $params $paramname}}
+	{{- end}}
+	{{- if .Type.IsContainer}}
+	{{- $tempparamname := printf "p%dvalue" $nparam}}
+	{{$tempparamname}} := L.Get({{$nparam}})
+	var {{$paramname}} {{.Type.GoString}}
+	if {{$tempparamname}}.Type() == lua.LTTable {
+		L.ForEach(p2value.(*lua.LTable), func(_, v lua.LValue) {
+			if v.Type() == {{.Type.InsideType.LuaString}} {
+				{{$paramname}} = append({{$paramname}}, {{.Type.InsideType.ToGoType "v"}})
+			} else {
+				L.ArgError({{$nparam}}, "string table expected")
+			}
+		})
+	} else if {{$tempparamname}}.Type() == {{.Type.InsideType.LuaString}} {
+		{{$paramname}} = append({{$paramname}}, {{.Type.InsideType.ToGoType $tempparamname}})
+	} else {
+		L.ArgError({{$nparam}}, "string or string table expected")
+	}
+	{{- else}}
+	{{$paramname}} := {{.Type.CheckFunction.CallExpr "L" $nparams}}
+	{{- end}}
+	{{- $nparam = add $nparam 1}}
+	{{- end}}
+	{{- end}}
+
+	ud := L.NewUserData()
+	{{- /* @todo check if the type has a ctor */}}
+	{{- $paramuse := join $params ", "}}
+	v := {{.Class.Constructor $paramuse}}
+	ud.Value = v
+	L.SetMetatable(ud, L.GetTypeMetatable({{.Class.MetatableName}}))
+	return ud
+}

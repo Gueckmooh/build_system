@@ -306,3 +306,5 @@ cython_debug/
 .build/
 .ccls-cache/
 cmd/bs/bs
+
+*_gen.go

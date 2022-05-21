@@ -100,3 +100,15 @@ func ListUniq[T comparable](l []T) []T {
 	}
 	return nl
 }
+
+func ListEqual[T comparable](l1, l2 []T) bool {
+	if len(l1) != len(l2) {
+		return false
+	}
+	for i := 0; i < len(l1); i++ {
+		if l1[i] != l2[i] {
+			return false
+		}
+	}
+	return true
+}

@@ -4,6 +4,8 @@ import os.path
 import subprocess
 from colorama import Fore, Style
 from tools.test_assert import AssertError, Asserter
+import shellescape
+import re
 
 
 def assertReturnOk(res):
@@ -25,7 +27,7 @@ def getPass():
     )
 
 
-class CompletedProcessToto:
+class CompletedProcessWrapper:
     def __init__(self, res):
         self.__res = res
 
@@ -52,24 +54,59 @@ class CompletedProcessToto:
             )
         return self
 
-    def stderrMustContain(self, c):
+    def stderrMustContain(self, *cs):
         print(".", end="", flush=True)
-        if c not in self.__res.stderr.decode("utf-8"):
+        for c in cs:
+            if c not in self.__res.stderr.decode("utf-8"):
+                raise AssertError(
+                    'Could not find "{}" in:\n{}'.format(
+                        c, self.__res.stderr.decode("utf-8")
+                    )
+                )
+        return self
+
+    def stdoutMustContain(self, *cs):
+        print(".", end="", flush=True)
+        for c in cs:
+            if c not in self.__res.stdout.decode("utf-8"):
+                raise AssertError(
+                    'Could not find "{}" in:\n{}'.format(
+                        c, self.__res.stdout.decode("utf-8")
+                    )
+                )
+        return self
+
+    def stdoutMustMatch(self, r):
+        print(".", end="", flush=True)
+        pattern = re.compile(r)
+        if pattern.search(self.__res.stdout.decode("utf-8")) is None:
             raise AssertError(
                 'Could not find "{}" in:\n{}'.format(
-                    c, self.__res.stderr.decode("utf-8")
+                    r, self.__res.stdout.decode("utf-8")
                 )
             )
         return self
 
-    def stdoutMustContain(self, c):
+    def stdoutMustNotMatch(self, r):
         print(".", end="", flush=True)
-        if c not in self.__res.stdout.decode("utf-8"):
+        pattern = re.compile(r)
+        if pattern.search(self.__res.stdout.decode("utf-8")) is not None:
             raise AssertError(
-                'Could not find "{}" in:\n{}'.format(
-                    c, self.__res.stdout.decode("utf-8")
+                'Error "{}" found in:\n{}'.format(
+                    r, self.__res.stdout.decode("utf-8")
                 )
             )
+        return self
+
+    def stdoutMustNotContain(self, *cs):
+        print(".", end="", flush=True)
+        for c in cs:
+            if c in self.__res.stdout.decode("utf-8"):
+                raise AssertError(
+                    'Error "{}" found in:\n{}'.format(
+                        c, self.__res.stdout.decode("utf-8")
+                    )
+                )
         return self
 
 
@@ -78,6 +115,10 @@ class TestSuite(Asserter):
         self.__name = name
         self.__dir = d
         self.__bspath = bspath
+        self.__verbose = False
+
+    def setVerbosity(self, v):
+        self.__verbose = v
 
     def getName(self):
         return self.__name
@@ -104,12 +145,31 @@ class TestSuite(Asserter):
         return True
 
     def runBS(self, options):
+        if self.__verbose:
+            print(
+                "{}Running command{}: {}".format(
+                    Style.BRIGHT,
+                    Style.RESET_ALL,
+                    " ".join([shellescape.quote(o) for o in options]),
+                )
+            )
         res = subprocess.run(
             [self.BSPath()] + options,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        return CompletedProcessToto(res)
+        if self.__verbose:
+            if len(res.stdout.decode("utf-8")) > 0:
+                print("{}stdout{}:".format(Style.BRIGHT, Style.RESET_ALL))
+                print(res.stdout.decode("utf-8"))
+            if len(res.stderr.decode("utf-8")) > 0:
+                print("{}stderr{}:".format(Style.BRIGHT, Style.RESET_ALL))
+                print(res.stderr.decode("utf-8"))
+        return CompletedProcessWrapper(res)
+
+    def removeFile(self, *filenames):
+        for filename in filenames:
+            os.remove(filename)
 
     def runCmd(self, options):
         res = subprocess.run(
@@ -117,7 +177,7 @@ class TestSuite(Asserter):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        return CompletedProcessToto(res)
+        return CompletedProcessWrapper(res)
 
     # def sandbox(self):
     #     return Sandbox()

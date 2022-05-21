@@ -1,0 +1,15 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+{{- /* func RegisterClassType(L *lua.LState) */ -}}
+{{.Signature}} {
+	if L.GetTypeMetatable({{.Class.MetatableName}}).Type() != lua.LTNil {
+		return
+	}
+	mt := L.NewTypeMetatable({{.Class.MetatableName}})
+	L.SetGlobal({{.Class.MetatableName}}, mt)
+
+	L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), {{.Class.MethodMapName}}))
+	{{- if .Class.HasCtor }}
+	L.SetField(mt, "new", L.NewFunction({{.Class.Ctor.LuaMappingName}}));
+	{{- end}}
+}

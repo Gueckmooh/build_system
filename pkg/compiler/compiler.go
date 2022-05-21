@@ -73,7 +73,7 @@ func WithBuildOption(s string) CompilerOption {
 
 func WithLinkOption(s string) CompilerOption {
 	return func(co *compilerOption) {
-		co.linkOptions = append(co.buildOptions, s)
+		co.linkOptions = append(co.linkOptions, s)
 	}
 }
 
