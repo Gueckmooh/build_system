@@ -25,19 +25,21 @@ type Project struct {
 }
 
 func NewProject() *Project {
+	baseProfile := NewProfile("Default")
 	p := &Project{
 		FName:            "",
 		FVersion:         "",
 		FLanguages:       []string{},
 		FSources:         []string{},
 		FDefaultTarget:   "",
+		FBaseProfile:     baseProfile,
+		FCPP:             baseProfile.FCPP,
 		FProfiles:        make(map[string]*Profile),
 		FDefaultProfile:  "",
 		FPlatforms:       make(map[string]*Profile),
 		FDefaultPlatform: "",
 	}
-	p.FBaseProfile = NewProfile("Default")
-	p.FCPP = p.FBaseProfile.FCPP
+	p.FProfiles["Default"] = baseProfile
 	return p
 }
 
@@ -68,6 +70,10 @@ func (p *Project) Profile(name string) *Profile {
 	pp := NewProfile(name)
 	p.FProfiles[name] = pp
 	return pp
+}
+
+func (p *Project) CPP() *CPPProfile {
+	return p.FCPP
 }
 
 func (p *Project) DefaultProfile(name string) {
@@ -101,6 +107,14 @@ func ConvertLuaProjectToProject(proj *Project) *project.Project {
 	for _, lang := range proj.FLanguages {
 		langIDs = append(langIDs, project.LanguageIDFromString(lang))
 	}
+	profiles := make(map[string]*project.Profile)
+	platforms := make(map[string]*project.Profile)
+	for name, profile := range proj.FProfiles {
+		profiles[name] = ConvertLuaProfileToProfile(profile)
+	}
+	for name, profile := range proj.FPlatforms {
+		platforms[name] = ConvertLuaProfileToProfile(profile)
+	}
 	pproj := &project.Project{
 		Name:      proj.FName,
 		Version:   proj.FVersion,
@@ -108,10 +122,10 @@ func ConvertLuaProjectToProject(proj *Project) *project.Project {
 		Sources: functional.ListMap(proj.FSources,
 			func(s string) project.DirectoryPattern { return project.DirectoryPattern(s) }),
 		DefaultTarget:   proj.FDefaultTarget,
-		Profiles:        map[string]*project.Profile{}, // @todo
-		BaseProfile:     &project.Profile{},            // @todo
+		Profiles:        profiles,
+		BaseProfile:     ConvertLuaProfileToProfile(proj.FBaseProfile),
 		DefaultProfile:  proj.FDefaultProfile,
-		Platforms:       map[string]*project.Profile{}, // @todo
+		Platforms:       platforms,
 		DefaultPlatform: proj.FDefaultPlatform,
 	}
 	return pproj

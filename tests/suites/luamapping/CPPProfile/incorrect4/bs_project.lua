@@ -14,10 +14,10 @@ project:AddSources "sources/"
 project:DefaultTarget "hello_exe"
 
 
-project.CPP:Dialect {"CPP20"}
+project:CPP():Dialect {"CPP20"}
 
-project.CPP:AddBuildOptions "-O0"
-project.CPP:AddBuildOptions {"-DDEBUG", "-Wall", "-Werror", 42}
+project:CPP():AddBuildOptions "-O0"
+project:CPP():AddBuildOptions {"-DDEBUG", "-Wall", "-Werror", 42}
 
-project.CPP:AddLinkOptions "-lm"
-project.CPP:AddLinkOptions {"-pthread", "-s"}
+project:CPP():AddLinkOptions "-lm"
+project:CPP():AddLinkOptions {"-pthread", "-s"}

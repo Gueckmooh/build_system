@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gueckmooh/bs/notpkg/luabslib"
 	"github.com/gueckmooh/bs/pkg/functional"
 	"github.com/gueckmooh/bs/pkg/lua/lualibs"
 	"github.com/gueckmooh/bs/pkg/lua/newluabslib"
@@ -56,19 +55,21 @@ func (C *LuaContext) LoadLuaBSLib() {
 
 func (C *LuaContext) InitializeLuaState() {
 	L := C.L
+	newluabslib.RegisterTypes(L)
 	L.SetGlobal("version", L.NewFunction(luaSetBSVersion))
 	C.LoadLuaBSLib()
 }
 
 func (C *LuaContext) ReadComponentFile(filename string) error {
-	luabslib.CurrentComponentFile = filename
+	// luabslib.CurrentComponentFile = filename
 	newluabslib.CurrentComponentFile = filename
 	if err := C.L.DoFile(filename); err != nil {
-		luabslib.CurrentComponentFile = ""
+		newluabslib.CurrentComponentFile = ""
 		return fmt.Errorf("Error while executing file '%s':\n\t%s",
 			filename, err.Error())
 	}
-	luabslib.CurrentComponentFile = ""
+	// luabslib.CurrentComponentFile = ""
+	newluabslib.CurrentComponentFile = ""
 
 	return nil
 }
@@ -81,7 +82,8 @@ func (C *LuaContext) ReadComponentFiles(filenames []string) ([]*project.Componen
 	if err != nil {
 		return nil, fmt.Errorf("Error while loading components:\n\t%s", err.Error())
 	}
-	return luabslib.ReadComponentsFromLuaState(C.L)
+	// return luabslib.ReadComponentsFromLuaState(C.L)
+	return newluabslib.ConvertLuaComponentsToComponents(C.Components), nil
 }
 
 func (C *LuaContext) ReadProjectFile(filename string) (*project.Project, error) {
@@ -90,7 +92,16 @@ func (C *LuaContext) ReadProjectFile(filename string) (*project.Project, error) 
 			filename, err.Error())
 	}
 
-	return luabslib.ReadProjectFromLuaState(C.L)
+	// return luabslib.ReadProjectFromLuaState(C.L)
+	fmt.Printf("%#v\n", C.Project)
+	fmt.Printf("%#v\n", C.Project.FBaseProfile)
+	for _, profile := range C.Project.FProfiles {
+		fmt.Printf("%#v\n", profile)
+	}
+	for _, profile := range C.Project.FPlatforms {
+		fmt.Printf("%#v\n", profile)
+	}
+	return newluabslib.ConvertLuaProjectToProject(C.Project), nil
 }
 
 func (C *LuaContext) GetProject(root string) (*project.Project, error) {

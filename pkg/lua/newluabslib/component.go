@@ -8,7 +8,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-//go:generate go run ./gen -i ./component.go -c Component -T ./gen/templates -P newluabslib -o component_gen.go -v
+//go:generate go run ./gen -i ./component.go -c Component -T ./gen/templates -P newluabslib -o component_gen.go
 
 var CurrentComponentFile string
 
@@ -30,7 +30,7 @@ type Component struct {
 
 func NewComponent(name string) *Component {
 	baseProfile := NewProfile("Default")
-	return &Component{
+	c := &Component{
 		FName:             name,
 		FType:             "",
 		FLanguages:        []string{},
@@ -45,6 +45,8 @@ func NewComponent(name string) *Component {
 		FPostbuildActions: []*lua.LFunction{},
 		FComponentPath:    filepath.Dir(CurrentComponentFile),
 	}
+	c.FProfiles["Default"] = baseProfile
+	return c
 }
 
 func (c *Component) Type(ty string) {
@@ -95,7 +97,7 @@ func (c *Component) AddPrebuildAction(act *lua.LFunction) {
 	c.FPrebuildActions = append(c.FPrebuildActions, act)
 }
 
-func (c *Component) AddPosbuildAction(act *lua.LFunction) {
+func (c *Component) AddPostbuildAction(act *lua.LFunction) {
 	c.FPostbuildActions = append(c.FPostbuildActions, act)
 }
 
@@ -123,7 +125,7 @@ func ConvertLuaComponentToComponent(comp *Component) *project.Component {
 			func(s string) project.FilesPattern { return project.FilesPattern(s) }),
 		Type:             project.ComponentTypeFromString(comp.FType),
 		Path:             comp.FComponentPath,
-		ExportedHeaders:  map[string]string{}, // @todo
+		ExportedHeaders:  comp.FExportedHeaders,
 		Requires:         comp.FRequires,
 		Profiles:         profiles,
 		BaseProfile:      ConvertLuaProfileToProfile(comp.FBaseProfile),

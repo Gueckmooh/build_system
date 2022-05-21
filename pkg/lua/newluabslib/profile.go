@@ -16,7 +16,8 @@ type Profile struct {
 
 func NewProfile(name string) *Profile {
 	return &Profile{
-		FCPP: NewCPPProfile(),
+		FName: name,
+		FCPP:  NewCPPProfile(),
 	}
 }
 
