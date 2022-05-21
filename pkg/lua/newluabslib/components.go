@@ -1,6 +1,10 @@
 package newluabslib
 
-import lua "github.com/yuin/gopher-lua"
+import (
+	"fmt"
+
+	lua "github.com/yuin/gopher-lua"
+)
 
 //go:generate go run ./gen -i ./components.go -c Components -T ./gen/templates -P newluabslib -o components_gen.go
 
@@ -14,13 +18,13 @@ func NewComponents() *Components {
 	}
 }
 
-func (c *Components) NewComponent(name string) *Component {
+func (c *Components) NewComponent(name string) (*Component, error) {
 	if _, ok := c.FComponents[name]; ok {
-		panic("Cannot create component named " + name + " it already exists")
+		return nil, fmt.Errorf("Cannot create component named %s it already exists", name)
 	}
 	cc := NewComponent()
 	c.FComponents[name] = cc
-	return cc
+	return cc, nil
 }
 
 func NewComponentsLoader(ret **Components) lua.LGFunction {

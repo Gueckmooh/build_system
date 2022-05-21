@@ -15,6 +15,7 @@ type Function struct {
 	Name           string
 	MappingName    string
 	LuaMappingName string
+	MayFail        bool
 	Type           *TFunction
 }
 
@@ -128,11 +129,12 @@ func (m methodReader) Visit(node ast.Node) ast.Visitor {
 
 			if v, ok := skipStar(n.Type.Results.List[0].Type).(*ast.Ident); ok {
 				if v.Name == m.className {
-					ty := newTypeFromNode(n)
+					ty, e := newTypeFromNode(n)
 					if ty, ok := ty.(*TFunction); ok {
 						*m.constructor = &Function{
-							Name: n.Name.Name,
-							Type: ty,
+							Name:    n.Name.Name,
+							Type:    ty,
+							MayFail: e,
 						}
 					}
 				}
@@ -142,11 +144,12 @@ func (m methodReader) Visit(node ast.Node) ast.Visitor {
 		if len(n.Recv.List) > 0 {
 			if v, ok := skipStar(n.Recv.List[0].Type).(*ast.Ident); ok {
 				if v.Name == m.className {
-					ty := newTypeFromNode(n)
+					ty, e := newTypeFromNode(n)
 					if ty, ok := ty.(*TFunction); ok {
 						method := &Function{
-							Name: n.Name.Name,
-							Type: ty,
+							Name:    n.Name.Name,
+							Type:    ty,
+							MayFail: e,
 						}
 						*m.methods = append(*m.methods, method)
 					} else {

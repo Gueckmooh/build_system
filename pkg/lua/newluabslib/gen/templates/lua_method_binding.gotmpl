@@ -35,7 +35,12 @@
 	{{- end}}
 	{{- $nparam = add $nparam 1}}
 	{{- end}}
-	{{if .Returns}} ret := {{end}} this.{{.Name}}({{join $params ", "}})
+	{{if .Returns}} ret {{if .MayFail}}, err {{end}} := {{else if .MayFail}} err := {{end}} this.{{.Name}}({{join $params ", "}})
+	{{- if .MayFail}}
+	if err != nil {
+		L.Error(lua.LString(err.Error()), 1)
+	}
+	{{- end}}
 	{{- if .Returns}}
 	{{- if .Type.ReturnType.IsContainer}}
 	retvalue := L.NewTable()

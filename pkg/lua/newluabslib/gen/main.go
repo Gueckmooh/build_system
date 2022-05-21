@@ -12,7 +12,10 @@ import (
 	"github.com/gueckmooh/bs/pkg/argparse"
 )
 
-var packageName string
+var (
+	packageName string
+	verbose     bool
+)
 
 func tryMain() error {
 	optparser := argparse.NewParser("gen", "Generate lua bindings")
@@ -36,11 +39,17 @@ func tryMain() error {
 		Required: true,
 		Help:     "The name of the package",
 	})
+	verboseOpt := optparser.Flag("v", "verbose", &argparse.Options{
+		Required: false,
+		Help:     "Make more noise",
+	})
 
 	err := optparser.Parse(os.Args)
 	if err != nil {
 		return err
 	}
+
+	verbose = *verboseOpt
 
 	templateDir = *tmplDir
 	packageName = *pckgName
@@ -55,7 +64,9 @@ func tryMain() error {
 		return err
 	}
 
-	printer.Fprint(os.Stdout, fset, file)
+	if verbose {
+		printer.Fprint(os.Stdout, fset, file)
+	}
 
 	classes := getClasses(file)
 	var class *Class
@@ -72,7 +83,9 @@ func tryMain() error {
 
 	SetFunctionNameBundle(class)
 
-	fmt.Printf("%s\n\n", class)
+	if verbose {
+		fmt.Printf("%s\n\n", class)
+	}
 
 	body := MustExecuteTemplate("main.gotmpl", class)
 	ndata, err := format.Source([]byte(body))

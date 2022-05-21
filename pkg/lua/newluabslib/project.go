@@ -1,6 +1,10 @@
 package newluabslib
 
-import lua "github.com/yuin/gopher-lua"
+import (
+	"fmt"
+
+	lua "github.com/yuin/gopher-lua"
+)
 
 //go:generate go run ./gen -i ./project.go -c Project -T ./gen/templates -P newluabslib -o project_gen.go
 
@@ -75,11 +79,11 @@ func (p *Project) Platforms(names ...string) {
 	}
 }
 
-func (p *Project) Platform(name string) *Profile {
+func (p *Project) Platform(name string) (*Profile, error) {
 	if v, ok := p.FPlatforms[name]; ok {
-		return v
+		return v, nil
 	}
-	panic("Platform " + name + " not found")
+	return nil, fmt.Errorf("Platform %s not found", name)
 }
 
 func (p *Project) DefaultPlatform(name string) {

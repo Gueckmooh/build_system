@@ -51,7 +51,7 @@ func (f fieldReader) Visit(node ast.Node) ast.Visitor {
 	switch n := node.(type) {
 	case *ast.Field:
 		*f.name = n.Names[0].String()
-		*f.ty = newTypeFromNode(n)
+		*f.ty, _ = newTypeFromNode(n)
 	}
 	return nil
 }
