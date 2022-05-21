@@ -5,19 +5,19 @@ import lua "github.com/yuin/gopher-lua"
 //go:generate go run ./gen -i ./profile.go -c Profile -T ./gen/templates -P newluabslib -o profile_gen.go
 
 type Profile struct {
-	name    string
-	sources []string
-	_CPP    *CPPProfile
+	FName    string
+	FSources []string
+	FCPP     *CPPProfile
 }
 
 func NewProfile(name string) *Profile {
 	return &Profile{
-		_CPP: NewCPPProfile(name),
+		FCPP: NewCPPProfile(),
 	}
 }
 
 func (p *Profile) CPP() *CPPProfile {
-	return p._CPP
+	return p.FCPP
 }
 
 func NewProfileLoader(ret **Profile) lua.LGFunction {

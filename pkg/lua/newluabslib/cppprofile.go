@@ -30,6 +30,10 @@ func RegisterCPPProfileType(L *lua.LState) {
 	__RegisterCPPProfileType(L)
 }
 
-func NewCPPProfile(dialect string) *CPPProfile {
-	return &CPPProfile{DialectF: dialect}
+func NewCPPProfile() *CPPProfile {
+	return &CPPProfile{
+		DialectF:     "",
+		BuildOptions: []string{},
+		LinkOptions:  []string{},
+	}
 }

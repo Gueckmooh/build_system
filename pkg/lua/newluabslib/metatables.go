@@ -7,4 +7,5 @@ func RegisterTypes(L *lua.LState) {
 	__RegisterComponentType(L)
 	__RegisterComponentsType(L)
 	__RegisterProfileType(L)
+	__RegisterProjectType(L)
 }
