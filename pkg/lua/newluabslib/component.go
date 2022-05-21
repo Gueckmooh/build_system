@@ -8,7 +8,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-//go:generate go run ./gen -i ./component.go -c Component -T ./gen/templates -P newluabslib -o component_gen.go
+//go:generate go run ./gen -i ./component.go -c Component -T ./gen/templates -P newluabslib -o component_gen.go -v
 
 var CurrentComponentFile string
 
@@ -17,7 +17,7 @@ type Component struct {
 	FType             string
 	FLanguages        []string
 	FSources          []string
-	FExportedHeaders  []string
+	FExportedHeaders  map[string]string
 	FRequires         []string
 	FProfiles         map[string]*Profile
 	FBaseProfile      *Profile
@@ -35,7 +35,7 @@ func NewComponent(name string) *Component {
 		FType:             "",
 		FLanguages:        []string{},
 		FSources:          []string{},
-		FExportedHeaders:  []string{},
+		FExportedHeaders:  make(map[string]string),
 		FRequires:         []string{},
 		FProfiles:         make(map[string]*Profile),
 		FBaseProfile:      baseProfile,
@@ -59,12 +59,14 @@ func (c *Component) AddSources(sources ...string) {
 	c.FSources = append(c.FSources, sources...)
 }
 
-func (c *Component) ExportedHeaders(headers ...string) {
-	c.FExportedHeaders = append(c.FExportedHeaders, headers...)
+func (c *Component) ExportedHeaders(headers map[string]string) {
+	for name, value := range headers {
+		c.FExportedHeaders[name] = value
+	}
 }
 
 func (c *Component) Requires(req ...string) {
-	c.FRequires = append(c.FExportedHeaders, req...)
+	c.FRequires = append(c.FRequires, req...)
 }
 
 func (c *Component) Profile(name string) *Profile {

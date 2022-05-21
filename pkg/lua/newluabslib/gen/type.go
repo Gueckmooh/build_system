@@ -13,7 +13,9 @@ type Type interface {
 	ToLuaType(v string) string
 	ToGoType(v string) string
 	IsContainer() bool
+	IsMap() bool
 	InsideType() Type
+	KeyType() Type
 	NeedsEllipsis() bool
 	IsError() bool
 }
@@ -43,8 +45,8 @@ type (
 		X *Class
 	}
 	TMap struct {
-		KeyType Type
-		ValType Type
+		Key Type
+		Val Type
 	}
 
 	TState     struct{}
@@ -65,7 +67,7 @@ func (t *TLFunction) GoString() string { return "lua.LFunction" }
 func (t *TInt) GoString() string       { return "int" }
 func (t *TError) GoString() string     { return "error" }
 func (t *TMap) GoString() string {
-	return fmt.Sprintf("map[%s]%s", t.KeyType.GoString(), t.ValType.GoString())
+	return fmt.Sprintf("map[%s]%s", t.Key.GoString(), t.Val.GoString())
 }
 func (t *TArray) GoString() string    { return "[]" + t.X.GoString() }
 func (t *TEllipsis) GoString() string { return "[]" + t.X.GoString() }
@@ -106,9 +108,25 @@ func (t *TLFunction) InsideType() Type { return nil }
 func (t *TInt) InsideType() Type       { return nil }
 func (t *TError) InsideType() Type     { return nil }
 func (t *TArray) InsideType() Type     { return t.X }
-func (t *TMap) InsideType() Type       { return t.ValType }
+func (t *TMap) InsideType() Type       { return t.Val }
 func (t *TEllipsis) InsideType() Type  { return t.X }
 func (t *TFunction) InsideType() Type  { return nil }
+
+func (t *TNil) KeyType() Type       { panic("Cannot get key") }
+func (t *TString) KeyType() Type    { panic("Cannot get key") }
+func (t *TCustom) KeyType() Type    { panic("Cannot get key") }
+func (t *TPointer) KeyType() Type   { panic("Cannot get key") }
+func (t *TClass) KeyType() Type     { panic("Cannot get key") }
+func (t *TState) KeyType() Type     { panic("Cannot get key") }
+func (t *TUserData) KeyType() Type  { panic("Cannot get key") }
+func (t *TGFunction) KeyType() Type { panic("Cannot get key") }
+func (t *TLFunction) KeyType() Type { panic("Cannot get key") }
+func (t *TInt) KeyType() Type       { panic("Cannot get key") }
+func (t *TError) KeyType() Type     { panic("Cannot get key") }
+func (t *TArray) KeyType() Type     { panic("Cannot get key") }
+func (t *TMap) KeyType() Type       { return t.Key }
+func (t *TEllipsis) KeyType() Type  { panic("Cannot get key") }
+func (t *TFunction) KeyType() Type  { panic("Cannot get key") }
 
 func (t *TNil) CheckFunction() Callable       { return nil }
 func (t *TCustom) CheckFunction() Callable    { return nil }
@@ -260,6 +278,22 @@ func (t *TArray) IsContainer() bool     { return true }
 func (t *TEllipsis) IsContainer() bool  { return true }
 func (t *TMap) IsContainer() bool       { return true }
 
+func (t *TNil) IsMap() bool       { return false }
+func (t *TString) IsMap() bool    { return false }
+func (t *TCustom) IsMap() bool    { return false }
+func (t *TPointer) IsMap() bool   { return false }
+func (t *TClass) IsMap() bool     { return false }
+func (t *TState) IsMap() bool     { return false }
+func (t *TUserData) IsMap() bool  { return false }
+func (t *TGFunction) IsMap() bool { return false }
+func (t *TLFunction) IsMap() bool { return false }
+func (t *TInt) IsMap() bool       { return false }
+func (t *TError) IsMap() bool     { return false }
+func (t *TFunction) IsMap() bool  { return false }
+func (t *TArray) IsMap() bool     { return false }
+func (t *TEllipsis) IsMap() bool  { return false }
+func (t *TMap) IsMap() bool       { return true }
+
 func (t *TNil) NeedsEllipsis() bool       { return false }
 func (t *TString) NeedsEllipsis() bool    { return false }
 func (t *TCustom) NeedsEllipsis() bool    { return false }
@@ -332,8 +366,8 @@ func newTypeFromExpr(expr ast.Expr) Type {
 		}
 	case *ast.MapType:
 		return &TMap{
-			KeyType: newTypeFromExpr(e.Key),
-			ValType: newTypeFromExpr(e.Value),
+			Key: newTypeFromExpr(e.Key),
+			Val: newTypeFromExpr(e.Value),
 		}
 	case *ast.SelectorExpr:
 		return newTypeFromSelector(e)

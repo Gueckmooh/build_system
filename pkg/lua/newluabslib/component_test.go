@@ -24,6 +24,10 @@ end
 c:AddPrebuildAction(pouet)
 p = c:Profile "zoo"
 p:CPP():Dialect "CPPPP"
+c:ExportedHeaders {
+  ["src/[DIRS]/*.hpp"] = "debug/[DIRS]/*.hpp",
+}
+
 `); err != nil {
 		fmt.Println(err.Error())
 		t.Fail()
