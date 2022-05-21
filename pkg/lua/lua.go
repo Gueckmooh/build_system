@@ -5,16 +5,19 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/gueckmooh/bs/notpkg/luabslib"
 	"github.com/gueckmooh/bs/pkg/functional"
-	"github.com/gueckmooh/bs/pkg/lua/luabslib"
 	"github.com/gueckmooh/bs/pkg/lua/lualibs"
+	"github.com/gueckmooh/bs/pkg/lua/newluabslib"
 	"github.com/gueckmooh/bs/pkg/project"
 	lua "github.com/yuin/gopher-lua"
 )
 
 type LuaContext struct {
-	L      *lua.LState
-	opened bool
+	L          *lua.LState
+	Project    *newluabslib.Project
+	Components *newluabslib.Components
+	opened     bool
 }
 
 func NewLuaContext() *LuaContext {
@@ -22,7 +25,7 @@ func NewLuaContext() *LuaContext {
 		L:      lua.NewState(),
 		opened: true,
 	}
-	InitializeLuaState(C.L)
+	C.InitializeLuaState()
 	return C
 }
 
@@ -39,22 +42,27 @@ func luaSetBSVersion(L *lua.LState) int {
 		fmt.Fprintf(os.Stderr, "Unknown version '%s'\n", version)
 		L.Panic(L)
 	}
-	LoadLuaBSLib(L, version)
+	// @note: for now the version is unused but it is added in
+	// prevention of future releases
 	return 0
 }
 
-func LoadLuaBSLib(L *lua.LState, version string) {
-	L.PreloadModule("project", luabslib.ProjectLoader)
-	L.PreloadModule("components", luabslib.ComponentsLoader)
-	lualibs.LoadLibs(L, version)
+func (C *LuaContext) LoadLuaBSLib() {
+	L := C.L
+	L.PreloadModule("project", newluabslib.NewProjectLoader(&C.Project))
+	L.PreloadModule("components", newluabslib.NewComponentsLoader(&C.Components))
+	lualibs.LoadLibs(L)
 }
 
-func InitializeLuaState(L *lua.LState) {
+func (C *LuaContext) InitializeLuaState() {
+	L := C.L
 	L.SetGlobal("version", L.NewFunction(luaSetBSVersion))
+	C.LoadLuaBSLib()
 }
 
 func (C *LuaContext) ReadComponentFile(filename string) error {
 	luabslib.CurrentComponentFile = filename
+	newluabslib.CurrentComponentFile = filename
 	if err := C.L.DoFile(filename); err != nil {
 		luabslib.CurrentComponentFile = ""
 		return fmt.Errorf("Error while executing file '%s':\n\t%s",

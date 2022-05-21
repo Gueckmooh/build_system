@@ -3,6 +3,8 @@ package newluabslib
 import (
 	"fmt"
 
+	"github.com/gueckmooh/bs/pkg/functional"
+	"github.com/gueckmooh/bs/pkg/project"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -92,4 +94,25 @@ func (p *Project) DefaultPlatform(name string) {
 
 func NewProjectLoader(ret **Project) lua.LGFunction {
 	return __NewProjectLoader(ret)
+}
+
+func ConvertLuaProjectToProject(proj *Project) *project.Project {
+	var langIDs []project.LanguageID
+	for _, lang := range proj.FLanguages {
+		langIDs = append(langIDs, project.LanguageIDFromString(lang))
+	}
+	pproj := &project.Project{
+		Name:      proj.FName,
+		Version:   proj.FVersion,
+		Languages: langIDs,
+		Sources: functional.ListMap(proj.FSources,
+			func(s string) project.DirectoryPattern { return project.DirectoryPattern(s) }),
+		DefaultTarget:   proj.FDefaultTarget,
+		Profiles:        map[string]*project.Profile{}, // @todo
+		BaseProfile:     &project.Profile{},            // @todo
+		DefaultProfile:  proj.FDefaultProfile,
+		Platforms:       map[string]*project.Profile{}, // @todo
+		DefaultPlatform: proj.FDefaultPlatform,
+	}
+	return pproj
 }

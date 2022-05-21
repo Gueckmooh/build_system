@@ -1,6 +1,10 @@
 package newluabslib
 
-import lua "github.com/yuin/gopher-lua"
+import (
+	"github.com/gueckmooh/bs/pkg/functional"
+	"github.com/gueckmooh/bs/pkg/project"
+	lua "github.com/yuin/gopher-lua"
+)
 
 //go:generate go run ./gen -i ./profile.go -c Profile -T ./gen/templates -P newluabslib -o profile_gen.go
 
@@ -26,4 +30,12 @@ func NewProfileLoader(ret **Profile) lua.LGFunction {
 
 func RegisterProfileType(L *lua.LState) {
 	__RegisterProfileType(L)
+}
+
+func ConvertLuaProfileToProfile(prof *Profile) *project.Profile {
+	pprof := project.NewProfile(prof.FName)
+	pprof.SetCPPProfile(ConvertLuaCPPProfileToCPPProfile(prof.FCPP))
+	pprof.Sources = functional.ListMap(prof.FSources,
+		func(s string) project.FilesPattern { return project.FilesPattern(s) })
+	return pprof
 }

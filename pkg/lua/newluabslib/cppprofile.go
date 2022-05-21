@@ -2,24 +2,27 @@ package newluabslib
 
 //go:generate go run ./gen -i ./cppprofile.go -c CPPProfile -T ./gen/templates -P newluabslib -o cppprofile_gen.go
 
-import lua "github.com/yuin/gopher-lua"
+import (
+	"github.com/gueckmooh/bs/pkg/project"
+	lua "github.com/yuin/gopher-lua"
+)
 
 type CPPProfile struct {
-	DialectF     string
-	BuildOptions []string
-	LinkOptions  []string
+	FDialect      string
+	FBuildOptions []string
+	FLinkOptions  []string
 }
 
 func (p *CPPProfile) Dialect(d string) {
-	p.DialectF = d
+	p.FDialect = d
 }
 
 func (p *CPPProfile) AddBuildOptions(bo ...string) {
-	p.BuildOptions = append(p.BuildOptions, bo...)
+	p.FBuildOptions = append(p.FBuildOptions, bo...)
 }
 
 func (p *CPPProfile) AddLinkOptions(bo ...string) {
-	p.LinkOptions = append(p.LinkOptions, bo...)
+	p.FLinkOptions = append(p.FLinkOptions, bo...)
 }
 
 func NewCPPProfileLoader(ret **CPPProfile) lua.LGFunction {
@@ -32,8 +35,16 @@ func RegisterCPPProfileType(L *lua.LState) {
 
 func NewCPPProfile() *CPPProfile {
 	return &CPPProfile{
-		DialectF:     "",
-		BuildOptions: []string{},
-		LinkOptions:  []string{},
+		FDialect:      "",
+		FBuildOptions: []string{},
+		FLinkOptions:  []string{},
 	}
+}
+
+func ConvertLuaCPPProfileToCPPProfile(cpp *CPPProfile) *project.CPPProfile {
+	ccpp := project.NewCPPProfile()
+	ccpp.SetDialectFromString(cpp.FDialect)
+	ccpp.BuildOptions = cpp.FBuildOptions
+	ccpp.LinkOptions = cpp.FLinkOptions
+	return ccpp
 }

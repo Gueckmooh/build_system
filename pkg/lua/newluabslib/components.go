@@ -3,6 +3,7 @@ package newluabslib
 import (
 	"fmt"
 
+	"github.com/gueckmooh/bs/pkg/project"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -22,11 +23,19 @@ func (c *Components) NewComponent(name string) (*Component, error) {
 	if _, ok := c.FComponents[name]; ok {
 		return nil, fmt.Errorf("Cannot create component named %s it already exists", name)
 	}
-	cc := NewComponent()
+	cc := NewComponent(name)
 	c.FComponents[name] = cc
 	return cc, nil
 }
 
 func NewComponentsLoader(ret **Components) lua.LGFunction {
 	return __NewComponentsLoader(ret)
+}
+
+func ConvertLuaComponentsToComponents(comps *Components) []*project.Component {
+	var ccomps []*project.Component
+	for _, c := range comps.FComponents {
+		ccomps = append(ccomps, ConvertLuaComponentToComponent(c))
+	}
+	return ccomps
 }

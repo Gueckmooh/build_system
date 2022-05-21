@@ -25,11 +25,11 @@ cpp:AddBuildOptions "caca"
 		t.Fail()
 	}
 	cppprofile := profile.CPP()
-	if cppprofile.DialectF != "Toto" {
+	if cppprofile.FDialect != "Toto" {
 		fmt.Println(`cppprofile.DialectF != "Toto"`)
 		t.Fail()
 	}
-	if !functional.ListEqual(cppprofile.BuildOptions, []string{"caca"}) {
+	if !functional.ListEqual(cppprofile.FBuildOptions, []string{"caca"}) {
 		fmt.Println(`!functional.ListEqual(cppprofile.BuildOptions, []string{"caca"})`)
 		t.Fail()
 	}

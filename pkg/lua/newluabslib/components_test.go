@@ -36,7 +36,7 @@ p:CPP():Dialect "CPPPP"
 			L.Call(0, 0)
 		}
 		for _, p := range component.FProfiles {
-			fmt.Println(p.CPP().DialectF)
+			fmt.Println(p.CPP().FDialect)
 		}
 	}
 }

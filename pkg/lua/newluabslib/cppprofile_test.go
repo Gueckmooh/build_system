@@ -22,11 +22,11 @@ p:AddBuildOptions "-Toto"
 		fmt.Println(err.Error())
 		t.Fail()
 	}
-	if cppprofile.DialectF != "toto" {
+	if cppprofile.FDialect != "toto" {
 		fmt.Println(`cppprofile.DialectF != "toto"`)
 		t.Fail()
 	}
-	if !functional.ListEqual(cppprofile.BuildOptions, []string{"-Toto"}) {
+	if !functional.ListEqual(cppprofile.FBuildOptions, []string{"-Toto"}) {
 		fmt.Println(`!functional.ListEqual(cppprofile.BuildOptions, []string{"-Toto"})`)
 		t.Fail()
 	}
