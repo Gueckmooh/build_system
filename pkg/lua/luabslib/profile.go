@@ -1,4 +1,4 @@
-package newluabslib
+package luabslib
 
 import (
 	"github.com/gueckmooh/bs/pkg/functional"
@@ -6,7 +6,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-//go:generate go run ./gen -i ./profile.go -c Profile -T ./gen/templates -P newluabslib -o profile_gen.go
+//go:generate go run ./gen -i ./profile.go -c Profile -T ./gen/templates -P luabslib -o profile_gen.go
 
 type Profile struct {
 	FName    string

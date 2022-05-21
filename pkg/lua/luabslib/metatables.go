@@ -1,4 +1,4 @@
-package newluabslib
+package luabslib
 
 import lua "github.com/yuin/gopher-lua"
 

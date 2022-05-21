@@ -1,19 +1,19 @@
-package newluabslib_test
+package luabslib_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/gueckmooh/bs/pkg/functional"
-	"github.com/gueckmooh/bs/pkg/lua/newluabslib"
+	"github.com/gueckmooh/bs/pkg/lua/luabslib"
 	lua "github.com/yuin/gopher-lua"
 )
 
 func TestLoaderRet(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
-	var cppprofile *newluabslib.CPPProfile
-	L.PreloadModule("cppprofile", newluabslib.NewCPPProfileLoader(&cppprofile))
+	var cppprofile *luabslib.CPPProfile
+	L.PreloadModule("cppprofile", luabslib.NewCPPProfileLoader(&cppprofile))
 	if err := L.DoString(`
 p = require "cppprofile"
 p:Dialect "toto"

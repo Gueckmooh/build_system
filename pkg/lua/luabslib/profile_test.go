@@ -1,20 +1,20 @@
-package newluabslib_test
+package luabslib_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/gueckmooh/bs/pkg/functional"
-	"github.com/gueckmooh/bs/pkg/lua/newluabslib"
+	"github.com/gueckmooh/bs/pkg/lua/luabslib"
 	lua "github.com/yuin/gopher-lua"
 )
 
 func TestProfile1(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
-	newluabslib.RegisterCPPProfileType(L)
-	var profile *newluabslib.Profile
-	L.PreloadModule("profile", newluabslib.NewProfileLoader(&profile))
+	luabslib.RegisterCPPProfileType(L)
+	var profile *luabslib.Profile
+	L.PreloadModule("profile", luabslib.NewProfileLoader(&profile))
 	if err := L.DoString(`
 p = require "profile"
 cpp = p:CPP()

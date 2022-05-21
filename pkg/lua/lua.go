@@ -6,16 +6,16 @@ import (
 	"path/filepath"
 
 	"github.com/gueckmooh/bs/pkg/functional"
+	"github.com/gueckmooh/bs/pkg/lua/luabslib"
 	"github.com/gueckmooh/bs/pkg/lua/lualibs"
-	"github.com/gueckmooh/bs/pkg/lua/newluabslib"
 	"github.com/gueckmooh/bs/pkg/project"
 	lua "github.com/yuin/gopher-lua"
 )
 
 type LuaContext struct {
 	L          *lua.LState
-	Project    *newluabslib.Project
-	Components *newluabslib.Components
+	Project    *luabslib.Project
+	Components *luabslib.Components
 	opened     bool
 }
 
@@ -48,28 +48,28 @@ func luaSetBSVersion(L *lua.LState) int {
 
 func (C *LuaContext) LoadLuaBSLib() {
 	L := C.L
-	L.PreloadModule("project", newluabslib.NewProjectLoader(&C.Project))
-	L.PreloadModule("components", newluabslib.NewComponentsLoader(&C.Components))
+	L.PreloadModule("project", luabslib.NewProjectLoader(&C.Project))
+	L.PreloadModule("components", luabslib.NewComponentsLoader(&C.Components))
 	lualibs.LoadLibs(L)
 }
 
 func (C *LuaContext) InitializeLuaState() {
 	L := C.L
-	newluabslib.RegisterTypes(L)
+	luabslib.RegisterTypes(L)
 	L.SetGlobal("version", L.NewFunction(luaSetBSVersion))
 	C.LoadLuaBSLib()
 }
 
 func (C *LuaContext) ReadComponentFile(filename string) error {
 	// luabslib.CurrentComponentFile = filename
-	newluabslib.CurrentComponentFile = filename
+	luabslib.CurrentComponentFile = filename
 	if err := C.L.DoFile(filename); err != nil {
-		newluabslib.CurrentComponentFile = ""
+		luabslib.CurrentComponentFile = ""
 		return fmt.Errorf("Error while executing file '%s':\n\t%s",
 			filename, err.Error())
 	}
 	// luabslib.CurrentComponentFile = ""
-	newluabslib.CurrentComponentFile = ""
+	luabslib.CurrentComponentFile = ""
 
 	return nil
 }
@@ -83,7 +83,7 @@ func (C *LuaContext) ReadComponentFiles(filenames []string) ([]*project.Componen
 		return nil, fmt.Errorf("Error while loading components:\n\t%s", err.Error())
 	}
 	// return luabslib.ReadComponentsFromLuaState(C.L)
-	return newluabslib.ConvertLuaComponentsToComponents(C.Components), nil
+	return luabslib.ConvertLuaComponentsToComponents(C.Components), nil
 }
 
 func (C *LuaContext) ReadProjectFile(filename string) (*project.Project, error) {
@@ -101,7 +101,7 @@ func (C *LuaContext) ReadProjectFile(filename string) (*project.Project, error) 
 	for _, profile := range C.Project.FPlatforms {
 		fmt.Printf("%#v\n", profile)
 	}
-	return newluabslib.ConvertLuaProjectToProject(C.Project), nil
+	return luabslib.ConvertLuaProjectToProject(C.Project), nil
 }
 
 func (C *LuaContext) GetProject(root string) (*project.Project, error) {

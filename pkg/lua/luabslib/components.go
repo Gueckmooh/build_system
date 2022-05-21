@@ -1,4 +1,4 @@
-package newluabslib
+package luabslib
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-//go:generate go run ./gen -i ./components.go -c Components -T ./gen/templates -P newluabslib -o components_gen.go
+//go:generate go run ./gen -i ./components.go -c Components -T ./gen/templates -P luabslib -o components_gen.go
 
 type Components struct {
 	FComponents map[string]*Component

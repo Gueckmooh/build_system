@@ -1,19 +1,19 @@
-package newluabslib_test
+package luabslib_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/gueckmooh/bs/pkg/lua/newluabslib"
+	"github.com/gueckmooh/bs/pkg/lua/luabslib"
 	lua "github.com/yuin/gopher-lua"
 )
 
 func TestComponents1(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
-	newluabslib.RegisterTypes(L)
-	var components *newluabslib.Components
-	L.PreloadModule("components", newluabslib.NewComponentsLoader(&components))
+	luabslib.RegisterTypes(L)
+	var components *luabslib.Components
+	L.PreloadModule("components", luabslib.NewComponentsLoader(&components))
 	if err := L.DoString(`
 components = require "components"
 c = components:NewComponent "pouet"

@@ -1,6 +1,6 @@
-package newluabslib
+package luabslib
 
-//go:generate go run ./gen -i ./cppprofile.go -c CPPProfile -T ./gen/templates -P newluabslib -o cppprofile_gen.go
+//go:generate go run ./gen -i ./cppprofile.go -c CPPProfile -T ./gen/templates -P luabslib -o cppprofile_gen.go
 
 import (
 	"github.com/gueckmooh/bs/pkg/project"

@@ -1,7 +1,0 @@
-{{- /* -*- mode: go; -*- */ -}}
-
-var {{ .LuaMappingName }} = map[string]lua.LGFunction{
-{{- range .Methods }}
-	"{{ .LuaName }}": {{ .Name }},
-{{- end }}
-}

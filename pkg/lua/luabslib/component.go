@@ -1,4 +1,4 @@
-package newluabslib
+package luabslib
 
 import (
 	"path/filepath"
@@ -8,7 +8,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-//go:generate go run ./gen -i ./component.go -c Component -T ./gen/templates -P newluabslib -o component_gen.go
+//go:generate go run ./gen -i ./component.go -c Component -T ./gen/templates -P luabslib -o component_gen.go
 
 var CurrentComponentFile string
 

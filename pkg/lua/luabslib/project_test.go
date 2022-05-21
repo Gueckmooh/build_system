@@ -1,19 +1,19 @@
-package newluabslib_test
+package luabslib_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/gueckmooh/bs/pkg/lua/newluabslib"
+	"github.com/gueckmooh/bs/pkg/lua/luabslib"
 	lua "github.com/yuin/gopher-lua"
 )
 
 func TestProject1(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
-	newluabslib.RegisterTypes(L)
-	var project *newluabslib.Project
-	L.PreloadModule("project", newluabslib.NewProjectLoader(&project))
+	luabslib.RegisterTypes(L)
+	var project *luabslib.Project
+	L.PreloadModule("project", luabslib.NewProjectLoader(&project))
 	if err := L.DoString(`
 project = require "project"
 

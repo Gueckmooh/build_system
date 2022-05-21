@@ -1,4 +1,4 @@
-package newluabslib
+package luabslib
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-//go:generate go run ./gen -i ./project.go -c Project -T ./gen/templates -P newluabslib -o project_gen.go
+//go:generate go run ./gen -i ./project.go -c Project -T ./gen/templates -P luabslib -o project_gen.go
 
 type Project struct {
 	FName            string
