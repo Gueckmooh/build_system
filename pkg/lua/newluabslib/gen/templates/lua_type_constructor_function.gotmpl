@@ -1,0 +1,10 @@
+{{- /* -*- mode: go; -*- */ -}}
+
+{{- if .Class.HasCtor }}
+{{- /* func LuaNewClass(L *lua.LState) int */ -}}
+{{.Signature}} {
+	ud := {{.Class.Ctor.MappingName}}(L)
+	L.Push(ud)
+	return 1
+}
+{{- end}}

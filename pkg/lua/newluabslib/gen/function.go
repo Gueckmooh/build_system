@@ -12,9 +12,10 @@ type Callable interface {
 }
 
 type Function struct {
-	Name        string
-	MappingName string
-	Type        *TFunction
+	Name           string
+	MappingName    string
+	LuaMappingName string
+	Type           *TFunction
 }
 
 type Method struct {
@@ -171,6 +172,7 @@ func (f *FunctionGen) Generate() string {
 type FunctionNameBundle struct {
 	LuaCheckType    *FunctionGen
 	LuaTypeCtor     *FunctionGen
+	LuaCtor         *FunctionGen
 	LuaTypeCvtor    *FunctionGen
 	LuaRegisterType *FunctionGen
 	LuaNewLoader    *FunctionGen
@@ -190,6 +192,7 @@ func SetFunctionNameBundle(c *Class) {
 	c.FunctionBundle = FunctionNameBundle{
 		LuaCheckType:    newLuaCheckTypeFunc(c),
 		LuaTypeCtor:     newLuaTypeCtorFunc(c),
+		LuaCtor:         newLuaCtorFunc(c),
 		LuaTypeCvtor:    newLuaTypeConvertorFunc(c),
 		LuaRegisterType: newLuaRegisterTypeFunc(c),
 		LuaNewLoader:    newLuaNewLoaderFunc(c),
@@ -231,16 +234,34 @@ func newLuaTypeCtorFunc(c *Class) *FunctionGen {
 	return f
 }
 
+func newLuaCtorFunc(c *Class) *FunctionGen {
+	f := &FunctionGen{
+		Function:     Function{Name: fmt.Sprintf("__LuaNew%s", c.Name), Type: &TFunction{}},
+		templateName: "lua_type_constructor_function.gotmpl",
+		Class:        c,
+	}
+	if c.Ctor != nil {
+		c.Ctor.LuaMappingName = fmt.Sprintf("__LuaNew%s", c.Name)
+	}
+	f.Type.ReturnType = &TInt{}
+	f.Type.Parameters = append(f.Type.Parameters, &Field{
+		Name: "L",
+		Type: &TPointer{&TState{}},
+	})
+	return f
+}
+
 func newLuaTypeConvertorFunc(c *Class) *FunctionGen {
 	f := &FunctionGen{
 		Function:     Function{Name: fmt.Sprintf("__Convert%s", c.Name), Type: &TFunction{}},
 		templateName: "type_convertor_function.gotmpl",
 		Class:        c,
 	}
-	if c.Ctor != nil {
-		c.Ctor.MappingName = fmt.Sprintf("__Convertor%s", c.Name)
-	}
 	f.Type.ReturnType = &TPointer{&TUserData{}}
+	f.Type.Parameters = append(f.Type.Parameters, &Field{
+		Name: "L",
+		Type: &TPointer{&TState{}},
+	})
 	f.Type.Parameters = append(f.Type.Parameters, &Field{
 		Name: "val",
 		Type: &TPointer{&TClass{c}},
