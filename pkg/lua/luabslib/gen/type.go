@@ -377,15 +377,18 @@ func newTypeFromExpr(expr ast.Expr) Type {
 }
 
 func newTypeFromSelector(sel *ast.SelectorExpr) Type {
-	if sel.Sel.Name == "LFunction" {
-		switch e := sel.X.(type) {
-		case *ast.Ident:
-			if e.Name == "lua" {
-				return &TLFunction{}
-			}
-		}
+	var s string
+	var x string
+	s = sel.Sel.Name
+	switch e := sel.X.(type) {
+	case *ast.Ident:
+		x = e.Name
 	}
-	panic(fmt.Errorf("Unknown selector %#v . %#v", sel.Sel, sel.X))
+	if s == "LFunction" && x == "lua" {
+		return &TLFunction{}
+	}
+	return &TCustom{Name: fmt.Sprintf("%s.%s", x, s)}
+	// panic(fmt.Errorf("Unknown selector %#v . %#v", sel.Sel, sel.X))
 }
 
 type typeReader struct {

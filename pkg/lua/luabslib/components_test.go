@@ -19,7 +19,6 @@ components = require "components"
 c = components:NewComponent "pouet"
 c:Type "toto"
 function pouet()
-print("caca")
 end
 c:AddPrebuildAction(pouet)
 p = c:Profile "zoo"
@@ -28,15 +27,10 @@ p:CPP():Dialect "CPPPP"
 		fmt.Println(err.Error())
 		t.Fail()
 	}
-	for name, component := range components.FComponents {
-		fmt.Println(name)
-		fmt.Println(component.FType)
+	for _, component := range components.FComponents {
 		for _, f := range component.FPrebuildActions {
 			L.Push(f)
 			L.Call(0, 0)
-		}
-		for _, p := range component.FProfiles {
-			fmt.Println(p.CPP().FDialect)
 		}
 	}
 }

@@ -17,19 +17,30 @@
 	{{- $tempparamname := printf "p%dvalue" $nparam}}
 	{{$tempparamname}} := L.Get({{$nparam}})
 	var {{$paramname}} {{.Type.GoString}}
+	{{- if .Type.IsMap}}
+	{{$paramname}} = make({{.Type.GoString}})
+	{{- end}}
 	if {{$tempparamname}}.Type() == lua.LTTable {
-		L.ForEach(p2value.(*lua.LTable), func(_, v lua.LValue) {
-			if v.Type() == {{.Type.InsideType.LuaString}} {
+		L.ForEach({{$tempparamname}}.(*lua.LTable), func({{if .Type.IsMap}}k{{else}}_{{end}}, v lua.LValue) {
+			if v.Type() == {{.Type.InsideType.LuaString}} {{if .Type.IsMap}}&& k.Type() == {{.Type.KeyType.LuaString}}{{end}}{
+				{{- if .Type.IsMap}}
+				{{$paramname}}[{{.Type.InsideType.ToGoType "k"}}] = {{.Type.InsideType.ToGoType "v"}}
+				{{- else}}
 				{{$paramname}} = append({{$paramname}}, {{.Type.InsideType.ToGoType "v"}})
+				{{- end}}
 			} else {
 				L.ArgError({{$nparam}}, "string table expected")
 			}
 		})
+	{{- if .Type.IsMap}}
+	}
+	{{- else}}
 	} else if {{$tempparamname}}.Type() == {{.Type.InsideType.LuaString}} {
 		{{$paramname}} = append({{$paramname}}, {{.Type.InsideType.ToGoType $tempparamname}})
 	} else {
 		L.ArgError({{$nparam}}, "string or string table expected")
 	}
+  {{- end}}
 	{{- else}}
 	{{$paramname}} := {{.Type.CheckFunction.CallExpr "L" $nparams}}
 	{{- end}}
@@ -40,7 +51,12 @@
 	ud := L.NewUserData()
 	{{- /* @todo check if the type has a ctor */}}
 	{{- $paramuse := join $params ", "}}
-	v := {{.Class.Constructor $paramuse}}
+	v{{if .Class.Ctor.MayFail}}, err {{end}} := {{.Class.Constructor $paramuse}}
+	{{- if .Class.Ctor.MayFail}}
+	if err != nil {
+		L.Error(lua.LString(err.Error()), 1)
+	}
+	{{- end}}
 	ud.Value = v
 	L.SetMetatable(ud, L.GetTypeMetatable({{.Class.MetatableName}}))
 	return ud
