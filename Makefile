@@ -15,7 +15,7 @@ LDFLAGS    := -w -s
 GOFLAGS    := -gcflags=all='-N'
 
 DEPDIR ?= .deps
-.PRECIOUS: %/.f $(DEPDIR)/%.d pkg/lua/luabslib/%_gen.go
+.PRECIOUS: %/.f $(DEPDIR)/%.d
 
 %/.f:
 	$(QUIET)mkdir -p $(dir $@)
@@ -27,6 +27,7 @@ SRC := $(shell find pkg -type f -name '*.go' -print) $(shell find cmd -type f -n
 # SRC += pkg/lua/luabslib/cppprofile_gen.go pkg/lua/luabslib/profile_gen.go
 GENERATED_SRC := pkg/lua/luabslib/cppprofile_gen.go pkg/lua/luabslib/profile_gen.go pkg/lua/luabslib/component_gen.go pkg/lua/luabslib/components_gen.go pkg/lua/luabslib/project_gen.go pkg/lua/luabslib/git_repository_gen.go
 SRC += $(GENERATED_SRC)
+.PRECIOUS: $(GENERATED_SRC)
 
 ALLBINS := $(addprefix $(BINDIR)/, $(ALLBIN))
 
