@@ -15,7 +15,7 @@ LDFLAGS    := -w -s
 GOFLAGS    := -gcflags=all='-N'
 
 DEPDIR ?= .deps
-.PRECIOUS: %/.f $(DEPDIR)/%.d
+.PRECIOUS: %/.f $(DEPDIR)/%.d %_gen.go
 
 %/.f:
 	$(QUIET)mkdir -p $(dir $@)
