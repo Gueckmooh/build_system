@@ -11,6 +11,7 @@ import (
 
 var fslibFunctions = map[string]lua.LGFunction{
 	"CopyFile": luaCopyFile,
+	"Exists":   luaExists,
 }
 
 func luaCopyFile(L *lua.LState) int {
@@ -25,6 +26,17 @@ func luaCopyFile(L *lua.LState) int {
 			colors.ColorRed+colors.StyleBold, colors.ColorReset, from, to, err.Error())
 	}
 	return 0
+}
+
+func luaExists(L *lua.LState) int {
+	file := L.CheckString(1)
+	_, err := os.Stat(file)
+	if os.IsNotExist(err) {
+		L.Push(lua.LFalse)
+		return 1
+	}
+	L.Push(lua.LTrue)
+	return 1
 }
 
 func fslibLoader(L *lua.LState) int {

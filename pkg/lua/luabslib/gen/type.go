@@ -388,7 +388,6 @@ func newTypeFromSelector(sel *ast.SelectorExpr) Type {
 		return &TLFunction{}
 	}
 	return &TCustom{Name: fmt.Sprintf("%s.%s", x, s)}
-	// panic(fmt.Errorf("Unknown selector %#v . %#v", sel.Sel, sel.X))
 }
 
 type typeReader struct {
