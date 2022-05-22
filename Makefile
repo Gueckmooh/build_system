@@ -15,7 +15,7 @@ LDFLAGS    := -w -s
 GOFLAGS    := -gcflags=all='-N'
 
 DEPDIR ?= .deps
-.PRECIOUS: %/.f $(DEPDIR)/%.d %_gen.go
+.PRECIOUS: %/.f $(DEPDIR)/%.d pkg/lua/luabslib/%_gen.go
 
 %/.f:
 	$(QUIET)mkdir -p $(dir $@)
