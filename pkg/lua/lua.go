@@ -87,10 +87,13 @@ func (C *LuaContext) ReadComponentFiles(filenames []string) ([]*project.Componen
 }
 
 func (C *LuaContext) ReadProjectFile(filename string) (*project.Project, error) {
+	luabslib.CurrentComponentFile = filename
 	if err := C.L.DoFile(filename); err != nil {
+		luabslib.CurrentComponentFile = ""
 		return nil, fmt.Errorf("Error while executing file '%s':\n\t%s",
 			filename, err.Error())
 	}
+	luabslib.CurrentComponentFile = ""
 
 	return luabslib.ConvertLuaProjectToProject(C.Project), nil
 }
