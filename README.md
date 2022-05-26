@@ -33,7 +33,7 @@ Here is the syntax of the `bs_project.lua` file:
 project = require "project"
 
 project:Name       "My Pretty Project"
-project:Version    "0.0.1"
+project:Version    "0.1.0"
 
 project:Languages  "CPP"     -- Enables C++ compilation
 

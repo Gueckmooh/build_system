@@ -1,6 +1,6 @@
 -- The minimal configuration that shouls be handled by the first
 -- version of the build system.
-version "0.0.1"
+version "0.1.0"
 
 project = require "project"
 

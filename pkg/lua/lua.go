@@ -37,7 +37,7 @@ func (C *LuaContext) Close() {
 
 func luaSetBSVersion(L *lua.LState) int {
 	version := L.ToString(1)
-	if version != "0.0.1" {
+	if version != "0.1.0" {
 		fmt.Fprintf(os.Stderr, "Unknown version '%s'\n", version)
 		L.Panic(L)
 	}
