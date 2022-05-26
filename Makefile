@@ -11,8 +11,14 @@ PKG        := ./...
 TAGS       :=
 TESTS      := .
 TESTFLAGS  :=
-LDFLAGS    := -w -s
+# LDFLAGS    := -w -s
 GOFLAGS    := -gcflags=all='-N'
+
+VERSION_OPTIONS := -X "github.com/gueckmooh/bs/pkg/version.version_hash=$(shell git describe --tags)"
+COMMIT_OPTIONS := -X "github.com/gueckmooh/bs/pkg/version.commit_hash=$(shell git describe --always)"
+BUILD_TIME_OPTION := -X "github.com/gueckmooh/bs/pkg/version.build_time=$(shell date)"
+
+LDFLAGS += $(VERSION_OPTIONS) $(COMMIT_OPTIONS) $(BUILD_TIME_OPTION)
 
 DEPDIR ?= .deps
 .PRECIOUS: %/.f $(DEPDIR)/%.d

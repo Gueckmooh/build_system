@@ -6,14 +6,17 @@ import (
 
 	"github.com/gueckmooh/bs/pkg/argparse"
 	log "github.com/gueckmooh/bs/pkg/logging"
+	"github.com/gueckmooh/bs/pkg/version"
 )
+
+const ProgramName = "bs"
 
 type Options struct {
 	parser *argparse.Parser
 
 	debug   *bool
 	verbose *bool
-	// directory *string
+	version *bool
 
 	buildOptions BuildOptions
 	cleanOptions CleanOptions
@@ -24,12 +27,14 @@ func (opts *Options) init() {
 	opts.debug = opts.parser.Flag("", "debug", &argparse.Options{
 		Required: false,
 		Help:     "Print debugging information in addition to normal processing.",
-		// Default:  false,
 	})
 	opts.verbose = opts.parser.Flag("", "verbose", &argparse.Options{
 		Required: false,
 		Help:     "Make more noise.",
-		// Default:  false,
+	})
+	opts.version = opts.parser.Flag("", "version", &argparse.Options{
+		Required: false,
+		Help:     "Prints the version",
 	})
 	opts.buildOptions.init(opts.parser)
 	opts.cleanOptions.init(opts.parser)
@@ -42,6 +47,20 @@ func tryMain() error {
 	err := opts.parser.Parse(os.Args)
 	if err != nil {
 		return fmt.Errorf("Fails to parse options:\n  %s\n", err.Error())
+	}
+
+	if *opts.version {
+		v, err := version.GetVersion()
+		if err != nil {
+			return err
+		}
+		if v.CommitsAhead > 0 {
+			fmt.Printf("%s: version %s commit %s (%d commits ahead)\n", ProgramName, v, v.Commit, v.CommitsAhead)
+		} else {
+			fmt.Printf("%s: version %s\n", ProgramName, v)
+		}
+		fmt.Printf("Build on %s\n", v.BuildTime)
+		return nil
 	}
 
 	if *opts.debug {
