@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	version_hash string
+	version_hash string = "v0.0.0-1-g123456789"
 	commit_hash  string
 	build_time   string
 )

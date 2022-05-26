@@ -14,7 +14,10 @@ TESTFLAGS  :=
 # LDFLAGS    := -w -s
 GOFLAGS    := -gcflags=all='-N'
 
-VERSION_OPTIONS := -X "github.com/gueckmooh/bs/pkg/version.version_hash=$(shell git describe --tags)"
+TAGS := $(shell git describe --tags 2>/dev/null)
+ifneq ($(TAGS),)
+VERSION_OPTIONS := -X "github.com/gueckmooh/bs/pkg/version.version_hash=$(TAGS)"
+endif
 COMMIT_OPTIONS := -X "github.com/gueckmooh/bs/pkg/version.commit_hash=$(shell git describe --always)"
 BUILD_TIME_OPTION := -X "github.com/gueckmooh/bs/pkg/version.build_time=$(shell date)"
 
