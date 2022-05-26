@@ -19,7 +19,6 @@ func TestComponent1(t *testing.T) {
 c = require "component"
 c:Type "toto"
 function pouet()
-print("caca")
 end
 c:AddPrebuildAction(pouet)
 p = c:Profile "zoo"
@@ -32,12 +31,8 @@ c:ExportedHeaders {
 		fmt.Println(err.Error())
 		t.Fail()
 	}
-	fmt.Println(component.FType)
 	for _, f := range component.FPrebuildActions {
 		L.Push(f)
 		L.Call(0, 0)
-	}
-	for _, p := range component.FProfiles {
-		fmt.Println(p.CPP().FDialect)
 	}
 }

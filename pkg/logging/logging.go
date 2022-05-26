@@ -49,6 +49,10 @@ func (l *Logger) Printf(format string, a ...any) {
 	}
 }
 
+func Printf(format string, a ...any) {
+	Log.Printf(format, a...)
+}
+
 func (l *Logger) Write(s string) {
 	for _, v := range strings.Split(s, "\n") {
 		l.Printf("%s\n", v)

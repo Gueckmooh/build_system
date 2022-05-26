@@ -31,6 +31,8 @@ func (B *Builder) getParamForName(name string) (lua.LValue, error) {
 		return lua.LString(B.component.Name), nil
 	case "targetPath":
 		return lua.LString(B.filesGraph.GetVertexAttribute(B.targetVertex).name), nil
+	case "componentPath":
+		return lua.LString(B.component.Path), nil
 	default:
 		return nil, fmt.Errorf("Unknown param '%s'", name)
 	}

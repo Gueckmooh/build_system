@@ -8,4 +8,5 @@ func RegisterTypes(L *lua.LState) {
 	__RegisterComponentsType(L)
 	__RegisterProfileType(L)
 	__RegisterProjectType(L)
+	__RegisterGitRepositoryType(L)
 }

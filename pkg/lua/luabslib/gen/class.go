@@ -58,7 +58,11 @@ func (c *Class) String() string {
 	}
 	if c.Ctor != nil {
 		fmt.Fprintf(&buff, "constructor:\n")
-		fmt.Fprintf(&buff, "  %s\n", c.Ctor)
+		fmt.Fprintf(&buff, "  %s", c.Ctor)
+		if c.Ctor.MayFail {
+			fmt.Fprintf(&buff, " error")
+		}
+		fmt.Fprintf(&buff, "\n")
 	}
 	fmt.Fprintf(&buff, "methods:\n")
 	for _, method := range c.Methods {

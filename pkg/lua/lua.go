@@ -92,15 +92,6 @@ func (C *LuaContext) ReadProjectFile(filename string) (*project.Project, error) 
 			filename, err.Error())
 	}
 
-	// return luabslib.ReadProjectFromLuaState(C.L)
-	fmt.Printf("%#v\n", C.Project)
-	fmt.Printf("%#v\n", C.Project.FBaseProfile)
-	for _, profile := range C.Project.FProfiles {
-		fmt.Printf("%#v\n", profile)
-	}
-	for _, profile := range C.Project.FPlatforms {
-		fmt.Printf("%#v\n", profile)
-	}
 	return luabslib.ConvertLuaProjectToProject(C.Project), nil
 }
 

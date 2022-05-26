@@ -10,9 +10,7 @@ import (
 )
 
 func sl(n int) {
-	fmt.Printf("sleep %d\n", n)
 	time.Sleep(3 * time.Second)
-	fmt.Printf("end sleep %d\n", n)
 }
 
 func sleeper(n int) func() error {
@@ -27,17 +25,13 @@ func TestBucket(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		b.Run(sleeper(i))
 	}
-	fmt.Println("Waiting")
 	err := b.Wait()
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println("Sleeping a bit more")
 	time.Sleep(time.Second)
-	fmt.Printf("End\n")
 	for true {
 		if err := b.Error(); err != nil {
-			fmt.Printf("-> %s\n", err.Error())
 		} else {
 			break
 		}
