@@ -20,6 +20,14 @@ func TestVersion1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = version.ParseVersionHash("v0.0.0_update1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = version.ParseVersionHash("v0.1.0_update2-1-ga12f880")
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = version.ParseVersionHash("v0.1-1-ga12f880")
 	if err == nil {
 		t.Fatal("An err should have been returned")
