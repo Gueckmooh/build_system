@@ -5,10 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## v0.1.0
 ### Added
-- Read basic configuration
-- Build basic configuration
-- Build basic configuration with several files including headers
-- Build execuable and libraries
-- Export headers for libraries
-- Add 'clean' target
+- Read configuration
+- Build project with several components
+- Handle executable component
+- Handle shared library component
+- Handle header only component
