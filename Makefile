@@ -11,7 +11,7 @@ PKG        := ./...
 TAGS       :=
 TESTS      := .
 TESTFLAGS  :=
-# LDFLAGS    := -w -s
+LDFLAGS    := -w -s
 GOFLAGS    := -gcflags=all='-N'
 
 TAGS := $(shell git describe --tags 2>/dev/null)
