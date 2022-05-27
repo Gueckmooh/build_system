@@ -20,7 +20,7 @@ type Options struct {
 }
 
 func (opts *Options) init() {
-	opts.parser = argparse.NewParser("bs", "Manages the build system")
+	opts.parser = argparse.NewParser("bs", "C++ build system")
 	opts.debug = opts.parser.Flag("", "debug", &argparse.Options{
 		Required: false,
 		Help:     "Print debugging information in addition to normal processing.",
