@@ -28,6 +28,7 @@ type ExtendedVersion struct {
 	Commit       string
 	CommitsAhead int
 	BuildTime    string
+	Update       int
 }
 
 func (v *Version) String() string {
@@ -35,32 +36,44 @@ func (v *Version) String() string {
 }
 
 func (v *ExtendedVersion) String() string {
+	var u string
+	if v.Update != 0 {
+		u = fmt.Sprintf(" (update %d)", v.Update)
+	}
 	if v.CommitsAhead > 0 {
 		var s string
 		if v.CommitsAhead != 1 {
 			s = "s"
 		}
-		return fmt.Sprintf("version %d.%d.%d commit %s (%d commit%s ahead)", v.Major, v.Minor, v.Patch,
+		return fmt.Sprintf("version %d.%d.%d%s commit %s (%d commit%s ahead)", v.Major, v.Minor, v.Patch, u,
 			v.Commit, v.CommitsAhead, s)
 	} else {
-		return fmt.Sprintf("version %s", &v.Version)
+		return fmt.Sprintf("version %s%s", &v.Version, u)
 	}
 }
 
-var re *regexp.Regexp = regexp.MustCompile(`^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9]+)-([0-9a-zA-Z]+)|)$`)
+var re *regexp.Regexp = regexp.MustCompile(`^v([0-9]+)\.([0-9]+)\.([0-9]+)(_update([0-9]+)|)(-([0-9]+)-g([0-9a-zA-Z]+)|)$`)
 
 func ParseVersionHash(hash string) (*ExtendedVersion, error) {
 	m := re.FindStringSubmatch(hash)
 	if len(m) > 0 {
 		var commitsAhead int
 		var commit string
+		var update int
 		var err error
-		if len(m[4]) > 0 {
-			commitsAhead, err = strconv.Atoi(m[5])
+		if len(m[6]) > 0 {
+			commitsAhead, err = strconv.Atoi(m[7])
 			if err != nil {
 				return nil, err
 			}
-			commit = m[6]
+			commit = m[8]
+		}
+		if len(m[4]) > 0 {
+			update, err = strconv.Atoi(m[5])
+			if err != nil {
+				return nil, err
+			}
+			commit = m[8]
 		}
 		major, err := strconv.Atoi(m[1])
 		if err != nil {
@@ -79,6 +92,7 @@ func ParseVersionHash(hash string) (*ExtendedVersion, error) {
 			Commit:       commit,
 			CommitsAhead: commitsAhead,
 			BuildTime:    build_time,
+			Update:       update,
 		}, nil
 	}
 	return nil, fmt.Errorf("could not parse version")
