@@ -54,12 +54,8 @@ func tryMain() error {
 		if err != nil {
 			return err
 		}
-		if v.CommitsAhead > 0 {
-			fmt.Printf("%s: version %s commit %s (%d commits ahead)\n", ProgramName, v, v.Commit, v.CommitsAhead)
-		} else {
-			fmt.Printf("%s: version %s\n", ProgramName, v)
-		}
-		fmt.Printf("Build on %s\n", v.BuildTime)
+		fmt.Printf("%s: %s\n", ProgramName, v)
+		fmt.Printf("Built on %s\n", v.BuildTime)
 		return nil
 	}
 

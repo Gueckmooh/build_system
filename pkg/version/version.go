@@ -35,7 +35,16 @@ func (v *Version) String() string {
 }
 
 func (v *ExtendedVersion) String() string {
-	return v.Version.String()
+	if v.CommitsAhead > 0 {
+		var s string
+		if v.CommitsAhead != 1 {
+			s = "s"
+		}
+		return fmt.Sprintf("version %d.%d.%d commit %s (%d commit%s ahead)", v.Major, v.Minor, v.Patch,
+			v.Commit, v.CommitsAhead, s)
+	} else {
+		return fmt.Sprintf("version %s", &v.Version)
+	}
 }
 
 var re *regexp.Regexp = regexp.MustCompile(`^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9]+)-([0-9a-zA-Z]+)|)$`)
