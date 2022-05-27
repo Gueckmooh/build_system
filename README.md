@@ -86,6 +86,24 @@ we have:
 A profile can have extra sources files, plus options for the C++
 language.
 
-### For more examples
+#### Configure base profile
+
+```lua
+CPP = project:CPP()  -- same can be done with component:CPP()
+
+CPP:Dialect "CPP20"
+CPP:AddBuildOptions {"-Wall", "-Werror"}
+CPP:AddLinkOptions {"-lm"}
+```
+
+#### Configure named profile
+
+```lua
+debugProfile = project:Profile "Debug"
+CPP = debugProfile:CPP()
+CPP:AddBuildOptions {"-g", "-O0"}
+```
+
+## For more examples
 
 See the examples listed in `tests/suites`.
