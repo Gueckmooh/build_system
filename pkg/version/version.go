@@ -29,6 +29,8 @@ type ExtendedVersion struct {
 	CommitsAhead int
 	BuildTime    string
 	Update       int
+	Alpha        int
+	Beta         int
 }
 
 func (v *Version) String() string {
@@ -39,6 +41,10 @@ func (v *ExtendedVersion) String() string {
 	var u string
 	if v.Update != 0 {
 		u = fmt.Sprintf(" (update %d)", v.Update)
+	} else if v.Alpha != 0 {
+		u = fmt.Sprintf(" (alpha %d)", v.Alpha)
+	} else if v.Beta != 0 {
+		u = fmt.Sprintf(" (beta %d)", v.Beta)
 	}
 	if v.CommitsAhead > 0 {
 		var s string
@@ -52,7 +58,7 @@ func (v *ExtendedVersion) String() string {
 	}
 }
 
-var re *regexp.Regexp = regexp.MustCompile(`^v([0-9]+)\.([0-9]+)\.([0-9]+)(_update([0-9]+)|)(-([0-9]+)-g([0-9a-zA-Z]+)|)$`)
+var re *regexp.Regexp = regexp.MustCompile(`^v([0-9]+)\.([0-9]+)\.([0-9]+)(-(update|alpha|beta)(.([0-9]+)|)|)(-([0-9]+)-g([0-9a-zA-Z]+)|)$`)
 
 func ParseVersionHash(hash string) (*ExtendedVersion, error) {
 	m := re.FindStringSubmatch(hash)
@@ -60,20 +66,32 @@ func ParseVersionHash(hash string) (*ExtendedVersion, error) {
 		var commitsAhead int
 		var commit string
 		var update int
+		var beta int
+		var alpha int
 		var err error
-		if len(m[6]) > 0 {
-			commitsAhead, err = strconv.Atoi(m[7])
+		if len(m[8]) > 0 {
+			commitsAhead, err = strconv.Atoi(m[9])
 			if err != nil {
 				return nil, err
 			}
-			commit = m[8]
+			commit = m[10]
 		}
 		if len(m[4]) > 0 {
-			update, err = strconv.Atoi(m[5])
-			if err != nil {
-				return nil, err
+			var v int = 1
+			if len(m[6]) > 0 {
+				v, err = strconv.Atoi(m[7])
+				if err != nil {
+					return nil, err
+				}
 			}
-			commit = m[8]
+			switch m[5] {
+			case "update":
+				update = v
+			case "alpha":
+				alpha = v
+			case "beta":
+				beta = v
+			}
 		}
 		major, err := strconv.Atoi(m[1])
 		if err != nil {
@@ -93,6 +111,8 @@ func ParseVersionHash(hash string) (*ExtendedVersion, error) {
 			CommitsAhead: commitsAhead,
 			BuildTime:    build_time,
 			Update:       update,
+			Alpha:        alpha,
+			Beta:         beta,
 		}, nil
 	}
 	return nil, fmt.Errorf("could not parse version")
